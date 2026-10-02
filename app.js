@@ -50,6 +50,27 @@ const JEV_THRESHOLD = 0.9;
 let jevOnline = false;
 const jevCache = new Map();
 
+// ---- 网页 ↔ 托盘管家联动（打开网页自动拉起 / 关闭网页自动停止） ----
+const JEV_CTRL = 'http://127.0.0.1:8002';
+let jevBurst = null;
+function jevBurstPoll() {
+  if (jevBurst) return;
+  let n = 0;
+  jevBurst = setInterval(async () => {
+    n++;
+    const ok = await jevHealth();
+    if (ok || n >= 15) { clearInterval(jevBurst); jevBurst = null; }
+  }, 2000);
+}
+function jevPing() {
+  fetch(JEV_CTRL + '/ping', { cache: 'no-store' })
+    .then(() => { if (!jevOnline) jevBurstPoll(); })
+    .catch(() => {});
+}
+window.addEventListener('pagehide', () => {
+  try { navigator.sendBeacon(JEV_CTRL + '/bye', 'x'); } catch (e) { /* ignore */ }
+});
+
 function updateJevBadge() {
   const text = jevOnline ? '本地判分服务：已连接' : '本地判分服务：未启动';
   for (const id of ['jev-badge', 'jev-status-download']) {
@@ -182,6 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
   updateOSInfo();
   jevHealth();
   setInterval(jevHealth, 15000);
+  jevPing();
+  setInterval(jevPing, 15000);
   
   document.getElementById('test-all').addEventListener('change', (e) => {
     document.getElementById('test-count').disabled = e.target.checked;
