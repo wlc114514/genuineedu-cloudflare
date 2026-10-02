@@ -1,0 +1,13 @@
+{
+  "name": "genuineedu-web",
+  "version": "1.0.0",
+  "description": "单词拼写测试网页版",
+  "main": "index.html",
+  "scripts": {
+    "dev": "python -m http.server 8080",
+    "preview": "python -m http.server 8080"
+  },
+  "keywords": ["vocabulary", "test", "education"],
+  "author": "",
+  "license": "MIT"
+}
