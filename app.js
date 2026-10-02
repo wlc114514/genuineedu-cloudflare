@@ -3,12 +3,51 @@ let libraries = JSON.parse(localStorage.getItem('libraries') || '{}');
 let testRecords = JSON.parse(localStorage.getItem('testRecords') || '[]');
 let currentTest = null;
 
+// 系统检测
+const OS = (() => {
+  const ua = navigator.userAgent;
+  const platform = navigator.platform;
+  if (platform.startsWith('Win')) return 'windows';
+  if (platform.startsWith('Mac')) return 'macos';
+  if (platform.startsWith('Linux')) return 'linux';
+  // 备用检测
+  if (ua.includes('Windows')) return 'windows';
+  if (ua.includes('Mac OS')) return 'macos';
+  if (ua.includes('Linux')) return 'linux';
+  return 'unknown';
+})();
+
+const OS_CONFIG = {
+  windows: {
+    label: 'Windows',
+    execName: 'llama-server.exe',
+    pathExample: '安装位置：C:\\Users\\<你的用户名>\\Desktop\\背词工具\\',
+    modelPath: '模型文件：C:\\Users\\<你的用户名>\\Desktop\\背词工具\\jev\\Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
+    runCommand: '双击「启动判分服务.bat」启动；或运行 python start_jev_server.py（服务地址 http://127.0.0.1:8001）'
+  },
+  macos: {
+    label: 'macOS',
+    execName: 'llama-server',
+    pathExample: '安装位置：~/Desktop/背词工具/',
+    modelPath: '模型文件：~/Desktop/背词工具/jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
+    runCommand: '双击「启动判分服务.command」启动；或运行 python3 start_jev_server.py（服务地址 http://127.0.0.1:8001）'
+  },
+  linux: {
+    label: 'Linux',
+    execName: 'llama-server',
+    pathExample: '安装位置：~/Desktop/背词工具/',
+    modelPath: '模型文件：~/Desktop/背词工具/jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
+    runCommand: 'python3 start_jev_server.py（服务地址 http://127.0.0.1:8001）'
+  }
+};
+
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
   renderLibraryTable();
   renderTestLibrarySelect();
   renderRecords();
   setupTabs();
+  updateOSInfo();
   
   document.getElementById('test-all').addEventListener('change', (e) => {
     document.getElementById('test-count').disabled = e.target.checked;
@@ -595,44 +634,68 @@ function deleteRecord(id) {
 }
 
 // JEV 模型下载
+function updateOSInfo() {
+  const config = OS_CONFIG[OS] || OS_CONFIG.windows;
+  
+  // 更新检测到的系统
+  const osSpan = document.getElementById('detected-os');
+  if (osSpan) {
+    osSpan.textContent = config.label;
+  }
+  
+  // 更新安装脚本后缀
+  const extEl = document.getElementById('installer-ext');
+  if (extEl) {
+    extEl.textContent = OS === 'macos' ? '(.sh)' : '(.bat)';
+  }
+  
+  // 更新按钮文本
+  const btn = document.getElementById('download-llama-btn');
+  if (btn) {
+    btn.textContent = `下载 ${config.execName}`;
+  }
+  
+  // 更新文件路径示例
+  const pathsEl = document.getElementById('file-paths');
+  if (pathsEl) {
+    pathsEl.innerHTML = `${config.pathExample}<br>${config.modelPath}`;
+  }
+  
+  // 更新启动命令
+  const cmdEl = document.getElementById('run-command');
+  if (cmdEl) {
+    cmdEl.textContent = config.runCommand;
+  }
+}
+
 async function downloadLlamaCpp() {
   const status = document.getElementById('llama-status');
-  status.textContent = '正在获取最新版本...';
+  const GH = 'https://gh-proxy.com/https://github.com/ggml-org/llama.cpp/releases/download/b8944/';
   
-  try {
-    // 获取 llama.cpp 最新 release
-    const releaseResp = await fetch('https://api.github.com/repos/ggerganov/llama.cpp/releases/latest');
-    const release = await releaseResp.json();
-    
-    // 找到 Windows CPU x64 版本
-    const asset = release.assets.find(a => a.name.includes('win-cpu-x64.zip'));
-    
-    if (!asset) {
-      status.textContent = '❌ 未找到 Windows x64 版本';
-      return;
-    }
-    
-    status.textContent = `找到版本 ${release.tag_name}，准备下载 ${(asset.size / 1024 / 1024).toFixed(1)}MB...`;
-    
-    // 触发浏览器下载
+  if (OS === 'macos') {
+    const file = 'llama-b8944-bin-macos-arm64.tar.gz';
     const a = document.createElement('a');
-    a.href = asset.browser_download_url;
-    a.download = asset.name;
+    a.href = GH + file;
+    a.download = file;
     a.click();
-    
-    status.textContent = `✅ 下载已开始：${asset.name}（解压后找到 llama-server.exe 放到 背词工具\\jev\\llama\\ 目录）`;
-  } catch (err) {
-    status.textContent = `❌ 下载失败：${err.message}`;
+    status.innerHTML = `✅ 下载已开始（约 8MB）。Apple Silicon 版：${file}；Intel 芯片请改用 <a href="${GH}llama-b8944-bin-macos-x64.tar.gz">x64 版</a>。<br>解压后把所有文件放到 ~/Desktop/背词工具/jev/llama/`;
+  } else {
+    const file = 'llama-b8944-bin-win-cpu-x64.zip';
+    const a = document.createElement('a');
+    a.href = GH + file;
+    a.download = file;
+    a.click();
+    status.innerHTML = `✅ 下载已开始（约 16MB）。解压后把解压出的所有文件放到 背词工具\\jev\\llama\\`;
   }
 }
 
 async function downloadJevModel() {
   const status = document.getElementById('jev-status');
   
-  // HuggingFace mirror 直链
+  // HuggingFace 国内镜像直链（已实测可用）
   const modelUrl = 'https://hf-mirror.com/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF/resolve/main/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf';
   
-  status.textContent = '准备下载 529MB 模型文件...';
+  status.textContent = '准备下载约 529MB 的模型文件...';
   
   // 触发浏览器下载
   const a = document.createElement('a');
@@ -640,5 +703,29 @@ async function downloadJevModel() {
   a.download = 'Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf';
   a.click();
   
-  status.textContent = '✅ 下载已开始：Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf（529MB，放到 背词工具\\jev\\ 目录）';
+  const pathHint = OS === 'macos'
+    ? '~/Desktop/背词工具/jev/ 目录'
+    : '背词工具\\jev\\ 目录';
+  
+  status.textContent = `✅ 下载已开始：Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf（约 529MB，放到 ${pathHint}）`;
+}
+
+function downloadInstaller() {
+  const status = document.getElementById('installer-status');
+  const isMac = OS === 'macos';
+  const installerFile = isMac ? 'install-jev-macos.sh' : 'install-jev-windows.bat';
+  
+  status.textContent = '准备下载一键安装脚本...';
+  
+  // 触发浏览器下载
+  const a = document.createElement('a');
+  a.href = installerFile;
+  a.download = installerFile;
+  a.click();
+  
+  if (isMac) {
+    status.innerHTML = `✅ 下载已开始：${installerFile}<br>下载后打开「终端」，执行：<code>bash ~/Downloads/${installerFile}</code>`;
+  } else {
+    status.innerHTML = `✅ 下载已开始：${installerFile}<br>下载后双击运行（浏览器若提示"不常下载的文件"，请选择保留）。`;
+  }
 }

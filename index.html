@@ -174,33 +174,63 @@
   <div id="download" class="tab-content">
     <div class="article-card">
       <h2>下载 JEV 本地判分模型</h2>
-      <p class="hint">JEV 是一个决策模型，用于判断学生写的中文释义是否与标准答案意思接近。模型运行在本地，需要下载 llama.cpp 服务端（19MB）和 Jev-Style-0.8B 模型（529MB）。</p>
+      <p class="hint">JEV 是一个决策模型，用于判断学生写的中文释义是否与标准答案意思接近。模型运行在本地，需要下载 llama.cpp 服务端（约 16MB）和 JEV 模型（约 529MB），下面的安装脚本会自动完成全部配置。</p>
       
-      <h3>1. 下载 llama-server.exe</h3>
-      <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">llama.cpp 官方 Windows CPU 版本，用于运行 GGUF 模型。</p>
-      <div class="actions">
-        <button class="primary" onclick="downloadLlamaCpp()">
-          下载 llama-server.exe (~19MB)
-        </button>
+      <div style="background: linear-gradient(135deg, rgba(220, 38, 38, 0.08), rgba(220, 38, 38, 0.02)); border: 1px solid rgba(220, 38, 38, 0.2); border-radius: 12px; padding: 2rem; margin-bottom: 3rem;">
+        <h3 style="margin-top: 0; color: var(--academic-red);">🚀 一键安装（推荐）</h3>
+        <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">自动下载并配置环境，无需手动解压和移动文件。系统：<span id="detected-os" style="color: var(--academic-red); font-weight: 600;"></span></p>
+        <div class="actions">
+          <button class="primary" onclick="downloadInstaller()" style="font-size: 1.1rem; padding: 1rem 2rem;">
+            下载一键安装脚本 <span id="installer-ext">(.bat)</span>
+          </button>
+        </div>
+        <div id="installer-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
+        
+        <details style="margin-top: 1.5rem; color: var(--paper-dim);">
+          <summary style="cursor: pointer; user-select: none; font-weight: 600;">使用说明</summary>
+          <ul style="margin-top: 1rem; padding-left: 1.5rem; line-height: 1.8;">
+            <li><strong>Windows：</strong>下载后<strong>双击运行</strong> install-jev-windows.bat，等它跑完（自动下载约 550MB，可断点续传）。装好后桌面会出现「背词工具-启动服务」快捷方式</li>
+            <li><strong>macOS：</strong>下载后打开<strong>「终端」</strong>，执行：<code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.5rem; border-radius: 4px;">bash ~/Downloads/install-jev-macos.sh</code></li>
+            <li>安装位置：Windows 为「桌面\背词工具」，macOS 为「~/Desktop/背词工具」</li>
+            <li>装好后：先启动<strong>判分服务</strong>（Windows 双击桌面快捷方式 / macOS 双击「启动判分服务.command」），再双击「单词默写」开始练习</li>
+            <li>需要 Python 3：Windows 脚本会自动安装；macOS 请确保已装 python3</li>
+          </ul>
+        </details>
       </div>
-      <div id="llama-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
       
-      <h3 style="margin-top: 3rem;">2. 下载 Jev-Style-0.8B 模型</h3>
-      <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">Qwen3.5-0.8B 底座的决策模型，支持 19+ 语言包括中文，GGUF Q4_K_M 量化版本 529MB。</p>
-      <div class="actions">
-        <button class="primary" onclick="downloadJevModel()">
-          下载 Jev-Style-0.8B-Q4_K_M.gguf (~529MB)
-        </button>
-      </div>
-      <div id="jev-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
+      <details style="margin-bottom: 2rem;">
+        <summary style="cursor: pointer; user-select: none; font-weight: 600; color: var(--paper-dim);">手动安装（高级用户）</summary>
+        
+        <div style="margin-top: 2rem;">
+          <h3>1. 下载 llama-server</h3>
+          <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">llama.cpp 官方 b8944 版（Windows：win-cpu-x64.zip 约 16MB；macOS：arm64/x64 tar.gz 约 8MB），解压后放入 jev\llama\ 目录。</p>
+          <div class="actions">
+            <button class="primary" id="download-llama-btn" onclick="downloadLlamaCpp()">
+              下载 llama-server
+            </button>
+          </div>
+          <div id="llama-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
+        </div>
+        
+        <div style="margin-top: 3rem;">
+          <h3>2. 下载 JEV 模型</h3>
+          <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">Jev-Style-0.8B-Decision-v3（Qwen3.5-0.8B 底座，19+ 语言含中文），GGUF Q4_K_M 量化，约 529MB。</p>
+          <div class="actions">
+            <button class="primary" onclick="downloadJevModel()">
+              下载 Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf
+            </button>
+          </div>
+          <div id="jev-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
+        </div>
+      </details>
       
       <h3 style="margin-top: 3rem;">使用说明</h3>
       <div style="background: rgba(249, 250, 251, 0.03); border-left: 4px solid var(--academic-red); padding: 2rem; line-height: 1.9; color: var(--paper-dim);">
         <p style="margin-bottom: 1rem;"><strong style="color: var(--paper);">文件存放位置：</strong></p>
-        <p style="font-family: var(--mono); margin-bottom: 1.5rem;">C:\Users\你的用户名\Desktop\背词工具\jev\llama\llama-server.exe<br>C:\Users\你的用户名\Desktop\背词工具\jev\Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf</p>
+        <p id="file-paths" style="font-family: var(--mono); margin-bottom: 1.5rem;"></p>
         
         <p style="margin-bottom: 1rem;"><strong style="color: var(--paper);">启动命令：</strong></p>
-        <p style="font-family: var(--mono); margin-bottom: 1.5rem;">llama-server.exe -m Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf --host 127.0.0.1 --port 8087 -c 2048 -t 8 --no-webui</p>
+        <p id="run-command" style="font-family: var(--mono); margin-bottom: 1.5rem;"></p>
         
         <p style="margin-bottom: 1rem;"><strong style="color: var(--paper);">判分阈值：</strong></p>
         <p>置信度 ≥0.9 判定为接近（可在 dictation_judge.json 配置），模型常驻内存约 1GB，单次判定约 330ms。</p>
