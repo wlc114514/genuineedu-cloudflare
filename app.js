@@ -1,22 +1,21 @@
-// ===== 数据结构 =====
+// 数据结构
 let libraries = JSON.parse(localStorage.getItem('libraries') || '{}');
 let testRecords = JSON.parse(localStorage.getItem('testRecords') || '[]');
 let currentTest = null;
 
-// ===== 初始化 =====
+// 初始化
 document.addEventListener('DOMContentLoaded', () => {
   renderLibraryTable();
   renderTestLibrarySelect();
   renderRecords();
   setupTabs();
   
-  // 全部单词复选框逻辑
   document.getElementById('test-all').addEventListener('change', (e) => {
     document.getElementById('test-count').disabled = e.target.checked;
   });
 });
 
-// ===== Tab 切换 =====
+// Tab 切换
 function setupTabs() {
   document.querySelectorAll('.tabs button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -31,7 +30,7 @@ function setupTabs() {
   });
 }
 
-// ===== 词库管理 =====
+// 词库管理
 function parseAndImport() {
   const name = document.getElementById('lib-name').value.trim();
   const text = document.getElementById('word-input').value.trim();
@@ -53,10 +52,8 @@ function parseAndImport() {
     return;
   }
   
-  // 预览
   renderPreview(words);
   
-  // 保存
   libraries[name] = {
     name,
     words,
@@ -71,7 +68,6 @@ function parseAndImport() {
   
   alert(`成功导入 ${words.length} 个单词到词库 "${name}"`);
   
-  // 清空输入
   document.getElementById('lib-name').value = '';
   document.getElementById('word-input').value = '';
 }
@@ -138,7 +134,7 @@ function renderPreview(words) {
   
   let html = '';
   for (const w of words.slice(0, 50)) {
-    html += `<div class="preview-entry">`;
+    html += `<div style="margin-bottom:0.75rem;">`;
     html += `<span class="preview-word">${w.word}</span>`;
     for (const s of w.senses) {
       html += `<div class="preview-sense">${s.pos}. ${s.meanings}</div>`;
@@ -147,7 +143,7 @@ function renderPreview(words) {
   }
   
   if (words.length > 50) {
-    html += `<div class="preview-entry" style="color:var(--text-ghost)">... 还有 ${words.length - 50} 个单词</div>`;
+    html += `<div style="color:var(--text-ghost)">... 还有 ${words.length - 50} 个单词</div>`;
   }
   
   content.innerHTML = html;
@@ -216,7 +212,7 @@ function exportAllTxt() {
 }
 
 function exportAllCsv() {
-  let csv = 'BOM' + '\uFEFF'; // UTF-8 BOM for Excel
+  let csv = '\uFEFF';
   csv += '词库,单词,词性,释义\n';
   
   for (const lib of Object.values(libraries)) {
@@ -240,7 +236,7 @@ function downloadFile(filename, content) {
   URL.revokeObjectURL(url);
 }
 
-// ===== 测试逻辑 =====
+// 测试逻辑
 function startTest() {
   const libName = document.getElementById('test-library').value;
   const student = document.getElementById('test-student').value.trim();
@@ -266,15 +262,12 @@ function startTest() {
   const lib = libraries[libName];
   let words = [...lib.words];
   
-  // 洗牌
   words = shuffle(words);
   
-  // 抽取
   if (!useAll && count < words.length) {
     words = words.slice(0, count);
   }
   
-  // 初始化测试
   currentTest = {
     libName,
     student,
@@ -286,6 +279,9 @@ function startTest() {
   };
   
   document.getElementById('header-student').textContent = student;
+  
+  document.querySelector('.test-config').style.display = 'none';
+  document.getElementById('test-ui').style.display = 'block';
   
   renderQuestion();
 }
@@ -303,16 +299,13 @@ function renderQuestion() {
   const { words, current, config } = currentTest;
   const word = words[current];
   
-  // 随机选择一个词性+释义
   const sense = config.display === 'random' 
     ? word.senses[Math.floor(Math.random() * word.senses.length)]
     : null;
   
-  // 生成字母提示
   const hint = generateHint(word.word, config.hint);
   
   const ui = document.getElementById('test-ui');
-  ui.style.display = 'block';
   
   ui.innerHTML = `
     <div class="test-header">
@@ -338,12 +331,12 @@ function renderQuestion() {
       <div class="hint-letters">${hint}</div>
       
       <label>
-        <span class="label">拼写</span>
+        <span>拼写</span>
         <input type="text" id="answer-spelling" autofocus>
       </label>
       
       <label>
-        <span class="label">释义（多个释义用分号、逗号或顿号分隔）</span>
+        <span>释义（多个释义用分号、逗号或顿号分隔）</span>
         <textarea id="answer-meanings" rows="3"></textarea>
       </label>
       
@@ -353,12 +346,10 @@ function renderQuestion() {
     </div>
   `;
   
-  // 限时
   if (config.timeout > 0) {
     startTimer(config.timeout);
   }
   
-  // 回车提交
   document.getElementById('answer-spelling').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -371,7 +362,6 @@ function generateHint(word, strategy) {
   if (strategy === 'none') return '___';
   if (strategy === 'first') return word[0] + '___';
   
-  // auto: 展示不超过一半
   const showCount = Math.floor(word.length / 2);
   let result = '';
   for (let i = 0; i < word.length; i++) {
@@ -393,7 +383,7 @@ function startTimer(seconds) {
     
     if (remaining <= 0) {
       clearInterval(timerInterval);
-      submitAnswer(true); // 超时自动提交
+      submitAnswer(true);
     }
   }, 1000);
 }
@@ -410,7 +400,6 @@ function submitAnswer(isTimeout = false) {
   const spelling = document.getElementById('answer-spelling').value.trim().toLowerCase();
   const meanings = document.getElementById('answer-meanings').value.trim();
   
-  // 判分
   const correct = checkAnswer(word, spelling, meanings, config);
   
   currentTest.answers.push({
@@ -422,32 +411,26 @@ function submitAnswer(isTimeout = false) {
     isTimeout
   });
   
-  // 显示反馈
   renderFeedback(word, spelling, meanings, correct, isTimeout);
 }
 
 function checkAnswer(word, spelling, meanings, config) {
-  // 拼写
   const spellingCorrect = spelling === word.word.toLowerCase();
   
-  // 释义
   let meaningsCorrect = false;
   
   if (config.match === 'loose') {
-    // 宽松：提取关键词
     const userKeywords = extractKeywords(meanings);
     const correctKeywords = word.senses.flatMap(s => extractKeywords(s.meanings));
     
     meaningsCorrect = userKeywords.some(uk => correctKeywords.includes(uk));
   } else {
-    // 严格：完全匹配
     const normalized = meanings.replace(/[；，、]/g, ';').toLowerCase();
     const correctMeanings = word.senses.flatMap(s => s.meanings.split(/[；，、;]/).map(m => m.trim().toLowerCase()));
     
     meaningsCorrect = correctMeanings.some(cm => normalized.includes(cm));
   }
   
-  // 判错标准
   if (config.criteria === 'any') {
     return spellingCorrect && meaningsCorrect;
   } else {
@@ -470,15 +453,15 @@ function renderFeedback(word, spelling, meanings, correct, isTimeout) {
         ${correct ? '✓ 正确' : '✗ 错误'}
       </div>
       
-      ${isTimeout ? '<p style="color:var(--warning)">⏰ 超时自动提交</p>' : ''}
+      ${isTimeout ? '<p style="color:var(--warning);margin-bottom:1.5rem;">超时自动提交</p>' : ''}
       
-      <div class="correct-answer">
+      <div class="answer-box">
         <strong>正确答案：</strong><br>
         <strong>${word.word}</strong><br>
         ${word.senses.map(s => `${s.pos}. ${s.meanings}`).join('<br>')}
       </div>
       
-      <div class="correct-answer">
+      <div class="answer-box">
         <strong>你的答案：</strong><br>
         拼写：${spelling || '（未填写）'}<br>
         释义：${meanings || '（未填写）'}
@@ -528,28 +511,27 @@ function finishTest() {
   testRecords.unshift(record);
   localStorage.setItem('testRecords', JSON.stringify(testRecords));
   
-  // 跳转到结果页
   document.querySelector('.tabs button[data-tab="results"]').click();
   renderRecords();
   
-  // 清空测试界面
   document.getElementById('test-ui').style.display = 'none';
+  document.querySelector('.test-config').style.display = 'grid';
   
   currentTest = null;
 }
 
-// ===== 结果页 =====
+// 结果页
 function renderRecords() {
   const container = document.getElementById('records-list');
   
   if (testRecords.length === 0) {
-    container.innerHTML = '<p style="text-align:center;color:var(--text-ghost);padding:var(--space-8)">暂无测试记录</p>';
+    container.innerHTML = '<p style="text-align:center;color:var(--text-ghost);padding:2rem;">暂无测试记录</p>';
     return;
   }
   
-  container.innerHTML = testRecords.map(record => `
+  container.innerHTML = `<div class="records-scroll">${testRecords.map(record => `
     <div class="record-card">
-      <div class="record-header">
+      <div class="record-stats">
         <div class="stat">
           <span class="stat-value">${record.accuracy}%</span>
           <span class="stat-label">正确率</span>
@@ -574,35 +556,33 @@ function renderRecords() {
       
       ${record.wrongWords.length > 0 ? `
         <h3>错词详情</h3>
-        <div class="result-table">
-          <table>
-            <thead>
-              <tr>
-                <th>单词</th>
-                <th>正确答案</th>
-                <th>你的拼写</th>
-                <th>你的释义</th>
+        <table>
+          <thead>
+            <tr>
+              <th>单词</th>
+              <th>正确答案</th>
+              <th>你的拼写</th>
+              <th>你的释义</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${record.wrongWords.map(w => `
+              <tr class="wrong-word">
+                <td><strong>${w.word}</strong></td>
+                <td>${w.senses.map(s => `${s.pos}. ${s.meanings}`).join('<br>')}</td>
+                <td>${w.spelling || '—'}</td>
+                <td>${w.meanings || '—'}</td>
               </tr>
-            </thead>
-            <tbody>
-              ${record.wrongWords.map(w => `
-                <tr class="wrong-word">
-                  <td><strong>${w.word}</strong></td>
-                  <td>${w.senses.map(s => `${s.pos}. ${s.meanings}`).join('<br>')}</td>
-                  <td>${w.spelling || '—'}</td>
-                  <td>${w.meanings || '—'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      ` : '<p style="color:var(--success);text-align:center;padding:var(--space-6)">🎉 全部正确！</p>'}
+            `).join('')}
+          </tbody>
+        </table>
+      ` : '<p style="color:var(--success);text-align:center;padding:1.5rem;">全部正确！</p>'}
       
       <div class="actions">
         <button onclick="deleteRecord(${record.id})">删除记录</button>
       </div>
     </div>
-  `).join('');
+  `).join('')}</div>`;
 }
 
 function deleteRecord(id) {
