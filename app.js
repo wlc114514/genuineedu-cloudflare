@@ -819,14 +819,14 @@ async function downloadLlamaCpp() {
     a.href = GH + file;
     a.download = file;
     a.click();
-    status.innerHTML = `✅ 下载已开始（约 8MB）。Apple Silicon 版：${file}；Intel 芯片请改用 <a href="${GH}llama-b8944-bin-macos-x64.tar.gz">x64 版</a>。<br>解压后把所有文件放到 ~/Desktop/背词工具/jev/llama/`;
+    status.innerHTML = `✅ 下载已开始（约 8MB）。Apple Silicon 版：${file}；Intel 芯片请改用 <a href="${GH}llama-b8944-bin-macos-x64.tar.gz">x64 版</a>。<br>解压后把所有文件放到 ~/Library/Application Support/JEV/jev/llama/`;
   } else {
     const file = 'llama-b8944-bin-win-cpu-x64.zip';
     const a = document.createElement('a');
     a.href = GH + file;
     a.download = file;
     a.click();
-    status.innerHTML = `✅ 下载已开始（约 16MB）。解压后把解压出的所有文件放到 背词工具\\jev\\llama\\`;
+    status.innerHTML = `✅ 下载已开始（约 16MB）。解压后把解压出的所有文件放到 %LOCALAPPDATA%\\Programs\\JEV\\jev\\llama\\`;
   }
 }
 
@@ -845,8 +845,8 @@ async function downloadJevModel() {
   a.click();
   
   const pathHint = OS === 'macos'
-    ? '~/Desktop/背词工具/jev/ 目录'
-    : '背词工具\\jev\\ 目录';
+    ? '~/Library/Application Support/JEV/jev/ 目录'
+    : '%LOCALAPPDATA%\\Programs\\JEV\\jev\\ 目录';
   
   status.textContent = `✅ 下载已开始：Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf（约 529MB，放到 ${pathHint}）`;
 }
