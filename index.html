@@ -3,217 +3,182 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GenuineEdu - 单词拼写测试</title>
+  <title>单词拼写测试</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <div class="container">
-      <h1>GenuineEdu</h1>
-      <div class="student-info">
-        <span class="label">学生：</span>
-        <span id="header-student">—</span>
-      </div>
+
+<header>
+  <div class="container">
+    <h1>单词拼写测试</h1>
+    <div></div>
+    <div class="student-info">
+      <span>学生：</span>
+      <span id="header-student">—</span>
     </div>
-  </header>
+  </div>
+</header>
 
-  <nav class="tabs">
-    <button data-tab="library" class="active">📚 词库</button>
-    <button data-tab="test">🎯 测试</button>
-    <button data-tab="results">📋 结果</button>
-  </nav>
+<nav class="tabs">
+  <button class="active" data-tab="library">📚 词库</button>
+  <button data-tab="test">🎯 测试</button>
+  <button data-tab="results">📋 结果</button>
+</nav>
 
-  <main class="container">
-    <!-- 词库页 -->
-    <section id="library-tab" class="tab-content active">
-      <div class="card">
-        <h2>导入词库</h2>
-        <p class="hint">每行一个单词，格式：<code>单词 + 词性 + 中文释义</code></p>
-        <p class="hint">词性支持英文缩写（v. / n. / adj.）或中文（动词 / 名词），支持复合词性（v&amp;n）</p>
-        <p class="hint">分隔方式：Tab（Excel 直接复制）、空格、或分号</p>
-        <p class="hint">示例：<code>mark v&amp;n. 标志、标记 n. 目标</code></p>
-        
-        <label>
-          <span class="label">词库名称</span>
-          <input type="text" id="lib-name" placeholder="例如：冲刺词汇 第1单元">
-        </label>
-        
-        <label>
-          <span class="label">粘贴单词表</span>
-          <textarea id="lib-input" rows="10" placeholder="每行一个单词，格式见上方说明"></textarea>
-        </label>
-        
-        <button id="parse-btn" class="primary">解析并导入</button>
-        
-        <div id="parse-preview" class="preview" style="display: none;">
-          <h3>解析预览</h3>
-          <div id="preview-content"></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>已保存词库</h2>
-        <table id="libraries-table">
-          <thead>
-            <tr>
-              <th>词库名称</th>
-              <th>词数</th>
-              <th>创建时间</th>
-              <th>操作</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <div class="actions">
-          <button id="export-all-txt">📤 导出全部 TXT</button>
-          <button id="export-all-csv">📤 导出全部 CSV</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 测试页 -->
-    <section id="test-tab" class="tab-content">
-      <div class="card">
-        <h2>开始测试</h2>
-        
-        <label>
-          <span class="label">选择词库</span>
-          <select id="test-lib"></select>
-        </label>
-        
-        <label>
-          <span class="label">学生姓名</span>
-          <input type="text" id="test-student" placeholder="例如：李小明">
-        </label>
-        
-        <label>
-          <span class="label">抽取单词数量（1–1000）</span>
-          <input type="number" id="test-count" min="1" max="1000" value="50">
-          <label class="checkbox">
-            <input type="checkbox" id="test-all">
-            <span>全部单词</span>
-          </label>
-        </label>
-        
-        <label>
-          <span class="label">拼写提示策略</span>
-          <select id="hint-mode">
-            <option value="auto">自动：展示不超过字母数一半（推荐）</option>
-            <option value="first">只展示首字母</option>
-            <option value="none">不展示字母（纯听写）</option>
-          </select>
-        </label>
-        
-        <label>
-          <span class="label">释义批改匹配</span>
-          <select id="match-mode">
-            <option value="loose">宽松：释义包含关键内容即可（推荐）</option>
-            <option value="strict">严格：必须与词表完全一致</option>
-          </select>
-        </label>
-        
-        <label>
-          <span class="label">判错标准</span>
-          <select id="wrong-rule">
-            <option value="any">拼写或任一释义错 → 记入错词（推荐）</option>
-            <option value="spelling">仅拼写错误 → 记入错词</option>
-          </select>
-        </label>
-        
-        <label>
-          <span class="label">每题答题限时</span>
-          <select id="time-limit">
-            <option value="0">不限时</option>
-            <option value="1">1 秒</option>
-            <option value="2">2 秒</option>
-            <option value="3">3 秒</option>
-            <option value="5">5 秒</option>
-            <option value="10">10 秒</option>
-          </select>
-        </label>
-        
-        <label>
-          <span class="label">词性释义显示</span>
-          <select id="sense-show">
-            <option value="random">随机显示一个词性 + 释义（推荐）</option>
-            <option value="all">全部显示（只考拼写）</option>
-          </select>
-        </label>
-        
-        <label class="checkbox">
-          <input type="checkbox" id="ext-enabled">
-          <span>开启扩展词测试（名词→复数；动词→过去式/分词/三单等）</span>
-        </label>
-        
-        <p class="hint">测试规则：每词随机展示释义，并给出字母提示；学生补全单词并写出其余释义。每答完一题立即显示对错。</p>
-        
-        <button id="start-test-btn" class="primary">▶ 开始测试</button>
-      </div>
-    </section>
-
-    <!-- 测试进行中 -->
-    <section id="testing-tab" class="tab-content">
-      <div class="test-ui">
-        <div class="test-header">
-          <div class="progress">
-            <span id="test-progress">1 / 50</span>
-          </div>
-          <div class="timer" id="test-timer" style="display: none;">⏱️ <span>0</span>s</div>
-        </div>
-        
-        <div class="question-card">
-          <div class="asked-sense">
-            <span class="pos" id="q-pos">v</span>
-            <span class="meaning" id="q-meaning">开花</span>
-          </div>
-          
-          <div class="hint-letters" id="q-hint">bl___</div>
-          
-          <label>
-            <span class="label">拼写</span>
-            <input type="text" id="answer-spelling" autocomplete="off" spellcheck="false">
-          </label>
-          
-          <div id="other-senses-input" style="display: none;">
-            <label>
-              <span class="label">其余词性释义（若无则留空）</span>
-              <textarea id="answer-other" rows="2" placeholder="例如：n 花朵"></textarea>
-            </label>
-          </div>
-          
-          <div id="ext-input" style="display: none;">
-            <label>
-              <span class="label">扩展词</span>
-              <div id="ext-fields"></div>
-            </label>
-          </div>
-          
-          <button id="submit-answer-btn" class="primary">提交答案</button>
-        </div>
-        
-        <div id="feedback" class="feedback" style="display: none;">
-          <div class="result"></div>
-          <div class="correct-answer"></div>
-          <button id="next-btn" class="primary">下一题</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- 结果页 -->
-    <section id="results-tab" class="tab-content">
-      <div id="no-records" style="display: none;">
-        <p class="hint">暂无测试记录</p>
+<main class="container">
+  
+  <!-- 词库页 -->
+  <div id="library" class="tab-content active">
+    <div class="card">
+      <h2>导入词库</h2>
+      <p class="hint">每行一个单词，格式：单词 + 词性 + 中文释义<br>
+      词性支持英文缩写（v. / n. / adj.）或中文（动词/名词），支持复合词性（v&n）<br>
+      分隔方式：Tab（Excel 直接复制）、空格、或分号<br>
+      示例：mark v&n. 标志、标记 n. 目标</p>
+      
+      <label>
+        <span class="label">词库名称</span>
+        <input type="text" id="lib-name" placeholder="例如：托福词汇 Unit 1">
+      </label>
+      
+      <label>
+        <span class="label">粘贴单词表</span>
+        <textarea id="word-input" placeholder="mark	v&n.	标志、标记	n.	目标
+blossom	v	开花	n	花朵
+accurate	adj.	精确的"></textarea>
+      </label>
+      
+      <div class="actions">
+        <button class="primary" onclick="parseAndImport()">解析并导入</button>
       </div>
       
+      <div id="preview" class="preview" style="display:none;">
+        <h3>预览解析结果</h3>
+        <div id="preview-content"></div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>已保存词库</h2>
+      <table id="lib-table">
+        <thead>
+          <tr>
+            <th>词库名称</th>
+            <th>词数</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="actions">
+        <button onclick="exportAllTxt()">📤 导出全部 TXT</button>
+        <button onclick="exportAllCsv()">📤 导出全部 CSV</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 测试页 -->
+  <div id="test" class="tab-content">
+    <div class="card">
+      <h2>开始测试</h2>
+      
+      <label>
+        <span class="label">选择词库</span>
+        <select id="test-library"></select>
+      </label>
+      
+      <label>
+        <span class="label">学生姓名</span>
+        <input type="text" id="test-student" placeholder="请输入学生姓名">
+      </label>
+      
+      <label>
+        <span class="label">抽取单词数量（1–1000）</span>
+        <input type="number" id="test-count" value="20" min="1" max="1000">
+      </label>
+      
+      <div class="checkbox">
+        <input type="checkbox" id="test-all">
+        <span>全部单词</span>
+      </div>
+      
+      <label>
+        <span class="label">拼写提示策略</span>
+        <select id="test-hint">
+          <option value="auto">自动：展示不超过字母数一半（推荐）</option>
+          <option value="first">只展示首字母</option>
+          <option value="none">不展示字母（纯听写）</option>
+        </select>
+      </label>
+      
+      <label>
+        <span class="label">释义批改匹配</span>
+        <select id="test-match">
+          <option value="loose">宽松：释义包含关键内容即可（推荐）</option>
+          <option value="strict">严格：必须与词表完全一致</option>
+        </select>
+      </label>
+      
+      <label>
+        <span class="label">判错标准</span>
+        <select id="test-criteria">
+          <option value="any">拼写或任一释义错 → 记入错词（推荐）</option>
+          <option value="spelling">仅拼写错误 → 记入错词</option>
+        </select>
+      </label>
+      
+      <label>
+        <span class="label">每题答题限时</span>
+        <select id="test-timeout">
+          <option value="0">不限时</option>
+          <option value="1">1 秒</option>
+          <option value="2">2 秒</option>
+          <option value="3">3 秒</option>
+          <option value="5">5 秒</option>
+          <option value="10">10 秒</option>
+        </select>
+      </label>
+      
+      <label>
+        <span class="label">词性释义显示</span>
+        <select id="test-display">
+          <option value="random">随机显示一个词性 + 释义（推荐）</option>
+          <option value="all">全部显示（只考拼写）</option>
+        </select>
+      </label>
+      
+      <div class="checkbox">
+        <input type="checkbox" id="test-inflection">
+        <span>开启扩展词测试（名词→复数；动词→过去式/分词/三单等）</span>
+      </div>
+      
+      <p class="hint">测试规则：每词随机展示释义，并给出字母提示；学生补全单词并写出其余释义。每答完一题立即显示对错。</p>
+      
+      <div class="actions">
+        <button class="primary" onclick="startTest()">▶ 开始测试</button>
+      </div>
+    </div>
+    
+    <!-- 测试界面 -->
+    <div id="test-ui" class="test-ui" style="display:none;"></div>
+  </div>
+  
+  <!-- 结果页 -->
+  <div id="results" class="tab-content">
+    <div class="card">
+      <h2>测试记录</h2>
       <div id="records-list"></div>
-    </section>
-  </main>
+    </div>
+  </div>
 
-  <footer>
-    <p>📌 使用流程：① 词库页粘贴单词表 → ② 测试页选择词库、设置参数 → ③ 答题 → ④ 查看结果与错词</p>
-    <p>💾 所有数据保存在浏览器 localStorage，不会上传；换浏览器或清除数据会丢失，请定期导出备份。</p>
-  </footer>
+</main>
 
-  <script src="app.js"></script>
+<footer>
+  <p>📌 使用流程：① 词库页粘贴单词表 → ② 测试页选择词库、设置参数 → ③ 答题 → ④ 查看结果与错词</p>
+  <p>💾 所有数据保存在浏览器 localStorage，不会上传；换浏览器或清除数据会丢失，请定期导出备份。</p>
+</footer>
+
+<script src="app.js"></script>
 </body>
 </html>
