@@ -21,22 +21,22 @@ const OS_CONFIG = {
   windows: {
     label: 'Windows',
     execName: 'llama-server.exe',
-    pathExample: '安装位置：C:\\Users\\<你的用户名>\\Desktop\\背词工具\\',
-    modelPath: '模型文件：C:\\Users\\<你的用户名>\\Desktop\\背词工具\\jev\\Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
-    runCommand: '双击「JEV本地判分服务」或 启动判分服务.bat 启动；服务地址 http://127.0.0.1:8001'
+    pathExample: '安装位置：C:\\Users\\<你的用户名>\\AppData\\Local\\Programs\\JEV\\',
+    modelPath: '模型文件：...\\Programs\\JEV\\jev\\Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
+    runCommand: '网页顶部点「启动判分服务」按钮即可；服务地址 http://127.0.0.1:8001'
   },
   macos: {
     label: 'macOS',
     execName: 'llama-server',
-    pathExample: '安装位置：~/Desktop/背词工具/',
-    modelPath: '模型文件：~/Desktop/背词工具/jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
-    runCommand: '双击「启动判分服务.command」启动；服务地址 http://127.0.0.1:8001'
+    pathExample: '安装位置：~/Library/Application Support/JEV/',
+    modelPath: '模型文件：~/Library/Application Support/JEV/jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
+    runCommand: '双击安装目录里的「启动判分服务.command」；服务地址 http://127.0.0.1:8001'
   },
   linux: {
     label: 'Linux',
     execName: 'llama-server',
-    pathExample: '安装位置：~/Desktop/背词工具/',
-    modelPath: '模型文件：~/Desktop/背词工具/jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
+    pathExample: '安装位置：~/.local/share/JEV/',
+    modelPath: '模型文件：~/.local/share/JEV/jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
     runCommand: '运行 ./jev/llama/llama-server -m jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf --host 127.0.0.1 --port 8001 -c 2048 -t 8 --no-webui'
   }
 };
@@ -51,7 +51,7 @@ let jevOnline = false;
 const jevCache = new Map();
 
 function updateJevBadge() {
-  const text = jevOnline ? '本地判分服务：已连接' : '本地判分服务：未检测到（将用文字匹配）';
+  const text = jevOnline ? '本地判分服务：已连接' : '本地判分服务：未启动';
   for (const id of ['jev-badge', 'jev-status-download']) {
     const el = document.getElementById(id);
     if (el) {
@@ -59,6 +59,40 @@ function updateJevBadge() {
       el.style.color = jevOnline ? 'var(--success, #16a34a)' : 'var(--text-ghost, #6b7280)';
     }
   }
+  const btn = document.getElementById('jev-start-btn');
+  if (btn) {
+    if (jevOnline) {
+      btn.style.display = 'none';
+    } else {
+      btn.style.display = 'inline-block';
+      if (!btn.disabled && btn.textContent !== '启动中…') btn.textContent = '启动判分服务';
+    }
+  }
+}
+
+function jevStart() {
+  const btn = document.getElementById('jev-start-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '启动中…'; }
+  // 通过自定义协议 jev:// 唤起本地服务（浏览器首次会询问，选「允许/打开」）
+  try {
+    const a = document.createElement('a');
+    a.href = 'jev://start';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (e) { /* ignore */ }
+  let n = 0;
+  const timer = setInterval(async () => {
+    n++;
+    const ok = await jevHealth();
+    if (ok || n >= 12) {
+      clearInterval(timer);
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = ok ? '已启动' : '没成功？点我再试';
+      }
+    }
+  }, 2500);
 }
 
 async function jevHealth() {

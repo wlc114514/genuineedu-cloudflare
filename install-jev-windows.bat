@@ -7,7 +7,7 @@ title JEV 本地判分服务一键安装
 :: ============================================================
 
 if not "%JEV_TEST_DIR%"=="" set "INSTALL_DIR=%JEV_TEST_DIR%"
-if "%INSTALL_DIR%"=="" set "INSTALL_DIR=%USERPROFILE%\Desktop\背词工具"
+if "%INSTALL_DIR%"=="" set "INSTALL_DIR=%LOCALAPPDATA%\Programs\JEV"
 
 echo ==================================================================
 echo         JEV 本地判分服务一键安装（Windows）
@@ -16,8 +16,8 @@ echo.
 echo   安装位置：%INSTALL_DIR%
 echo   安装内容：llama-server + JEV 判分模型（约 520MB）
 echo.
-echo   装好后：双击桌面「JEV本地判分服务」启动，
-echo   网页版默写时的释义判分会自动使用它。
+echo   装好后：判分服务自动在后台运行（无窗口、无桌面图标），
+echo   网页版默写时自动使用；网页上可一键唤起。
 echo.
 echo   下载中断不要紧，重新运行本脚本即可断点续传。
 echo   安装过程请保持本窗口打开。
@@ -84,7 +84,7 @@ for %%A in ("%MODEL%") do if %%~zA LSS 528000000 goto err_model
 echo         完成
 echo.
 
-echo [5/5] 创建启动脚本...
+echo [5/5] 创建启动脚本（隐藏启动 + 网页唤起）...
 (
 echo @echo off
 echo title JEV本地判分服务-保持本窗口打开
@@ -100,9 +100,37 @@ echo echo.
 echo echo 服务已停止。按任意键关闭...
 echo pause
 ) > "%INSTALL_DIR%\启动判分服务.bat"
-if not "%JEV_TEST_DIR%"=="" goto no_shortcut
-powershell -NoProfile -Command "$WS=New-Object -ComObject WScript.Shell; $SC=$WS.CreateShortcut('%USERPROFILE%\Desktop\JEV本地判分服务.lnk'); $SC.TargetPath='%INSTALL_DIR%\启动判分服务.bat'; $SC.WorkingDirectory='%INSTALL_DIR%'; $SC.IconLocation='shell32.dll,277'; $SC.Save()" 2>nul
-:no_shortcut
+
+:: 生成隐藏启动器 start_jev_hidden.vbs（base64 内嵌，certutil 解码，纯 ASCII 无编码风险）
+set "JEV_B64=%TEMP%\jev_vbs_b64.txt"
+(
+echo -----BEGIN CERTIFICATE-----
+echo JyBKRVYgbG9jYWwganVkZ2luZyBzZXJ2aWNlIC0gaGlkZGVuIGxhdW5jaGVyCicgQ2hlY2tzIGlm
+echo IHNlcnZpY2UgaXMgYWxyZWFkeSBydW5uaW5nOyBpZiBub3QsIHN0YXJ0cyBsbGFtYS1zZXJ2ZXIg
+echo d2l0aCBubyB3aW5kb3cuCk9wdGlvbiBFeHBsaWNpdApEaW0gZnNvLCBzaGVsbCwgYmFzZSwgaHR0
+echo cCwgY21kClNldCBmc28gPSBDcmVhdGVPYmplY3QoIlNjcmlwdGluZy5GaWxlU3lzdGVtT2JqZWN0
+echo IikKU2V0IHNoZWxsID0gQ3JlYXRlT2JqZWN0KCJXU2NyaXB0LlNoZWxsIikKYmFzZSA9IGZzby5H
+echo ZXRQYXJlbnRGb2xkZXJOYW1lKFdTY3JpcHQuU2NyaXB0RnVsbE5hbWUpCgpPbiBFcnJvciBSZXN1
+echo bWUgTmV4dApTZXQgaHR0cCA9IENyZWF0ZU9iamVjdCgiTVNYTUwyLlNlcnZlclhNTEhUVFAuNi4w
+echo IikKaHR0cC5vcGVuICJHRVQiLCAiaHR0cDovLzEyNy4wLjAuMTo4MDAxL2hlYWx0aCIsIEZhbHNl
+echo Cmh0dHAuc2VuZApJZiBFcnIuTnVtYmVyID0gMCBUaGVuCiAgSWYgaHR0cC5zdGF0dXMgPSAyMDAg
+echo VGhlbgogICAgV1NjcmlwdC5RdWl0IDAKICBFbmQgSWYKRW5kIElmCkVyci5DbGVhcgpPbiBFcnJv
+echo ciBHb3RvIDAKCmNtZCA9ICJjbWQgL2MgY2QgL2QgIiIiICYgYmFzZSAmICJcamV2IiIgJiYgbGxh
+echo bWFcbGxhbWEtc2VydmVyLmV4ZSAtbSAiIkpldi1TdHlsZS0wLjhCLURlY2lzaW9uLXYzLVE0X0tf
+echo TS5nZ3VmIiIgLS1ob3N0IDEyNy4wLjAuMSAtLXBvcnQgODAwMSAtYyAyMDQ4IC10IDggLS1uby13
+echo ZWJ1aSA+PiAiInNlcnZlci5sb2ciIiAyPiYxIgpzaGVsbC5SdW4gY21kLCAwLCBGYWxzZQo=
+echo -----END CERTIFICATE-----
+) > "%JEV_B64%"
+certutil -decode "%JEV_B64%" "%INSTALL_DIR%\start_jev_hidden.vbs" >nul 2>nul
+del "%JEV_B64%" 2>nul
+if not exist "%INSTALL_DIR%\start_jev_hidden.vbs" echo         [警告] 隐藏启动器生成失败，可重新运行本脚本
+
+:: 注册 jev:// 协议（网页「启动判分服务」按钮唤起用；测试模式跳过，避免覆盖正式注册）
+if not "%JEV_TEST_DIR%"=="" goto skip_reg
+reg add "HKCU\Software\Classes\jev" /ve /d "URL:JEV Local Service" /f >nul 2>nul
+reg add "HKCU\Software\Classes\jev" /v "URL Protocol" /t REG_SZ /d "" /f >nul 2>nul
+reg add "HKCU\Software\Classes\jev\shell\open\command" /ve /t REG_SZ /d "\"C:\Windows\System32\wscript.exe\" \"%INSTALL_DIR%\start_jev_hidden.vbs\" \"%%1\"" /f >nul 2>nul
+:skip_reg
 echo         完成
 echo.
 
@@ -111,17 +139,19 @@ echo    安装完成！
 echo ==================================================================
 echo.
 echo   使用方法：
-echo     1. 双击桌面「JEV本地判分服务」启动服务（保持窗口打开）
-echo     2. 打开网页版答题，释义判分会自动使用本地模型
+echo     1. 判分服务已在后台运行（无窗口，桌面无任何图标）
+echo     2. 以后（如重启后）要用时：打开网页，点顶部「启动判分服务」按钮
+echo     3. 打开网页版答题，释义判分会自动使用本地模型
 echo.
 echo   如果浏览器询问「是否允许访问本地网络/设备」，请点允许。
 echo   服务地址：http://127.0.0.1:8001
 echo ==================================================================
 echo.
 set "SN="
-set /p SN=是否立即启动判分服务？(Y/N): 
+set /p SN=是否立即在后台启动判分服务？(Y/N): 
 if /i not "%SN%"=="Y" goto the_end
-start "" "%INSTALL_DIR%\启动判分服务.bat"
+"%SystemRoot%\System32\wscript.exe" "%INSTALL_DIR%\start_jev_hidden.vbs"
+echo         服务已在后台启动（无窗口）
 
 :the_end
 echo.

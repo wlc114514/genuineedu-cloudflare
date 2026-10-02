@@ -4,7 +4,7 @@
 #  为网页版背词工具提供本地释义判分（llama-server + JEV 模型）
 # ============================================================
 
-BASE="${JEV_TEST_DIR:-$HOME/Desktop/背词工具}"
+BASE="${JEV_TEST_DIR:-$HOME/Library/Application Support/JEV}"
 
 echo "======================================================"
 echo "        JEV 本地判分服务一键安装（macOS）"
@@ -99,28 +99,32 @@ echo "[3/4] 创建启动脚本..."
 cat > "$BASE/启动判分服务.command" <<'EOS'
 #!/bin/bash
 cd "$(dirname "$0")"
-echo ""
-echo "JEV 本地判分服务启动中..."
-echo "服务地址 http://127.0.0.1:8001"
-echo "打开网页版默写时，释义判分会自动使用本服务。"
-echo "请保持本窗口打开；按 Ctrl+C 停止服务。"
-echo ""
-./jev/llama/llama-server -m "jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf" --host 127.0.0.1 --port 8001 -c 2048 -t 8 --no-webui
-echo ""
-read -r -p "服务已停止。按回车键关闭..." _
+if curl -s -m 2 http://127.0.0.1:8001/health >/dev/null 2>&1; then
+  echo "判分服务已在运行。"
+  read -r -p "按回车键关闭..." _
+  exit 0
+fi
+nohup ./jev/llama/llama-server -m "jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf" --host 127.0.0.1 --port 8001 -c 2048 -t 8 --no-webui >> "jev/server.log" 2>&1 &
+sleep 1
+echo "判分服务已在后台启动（无窗口，可以关闭此窗口）。"
+read -r -p "按回车键关闭..." _
 EOS
 chmod +x "$BASE/启动判分服务.command"
+
+# 立即在后台启动一次（若尚未运行）
+if ! curl -s -m 2 http://127.0.0.1:8001/health >/dev/null 2>&1; then
+  ( cd "$BASE" && nohup ./jev/llama/llama-server -m "jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf" --host 127.0.0.1 --port 8001 -c 2048 -t 8 --no-webui >> "jev/server.log" 2>&1 & )
+fi
 echo "  完成"
 echo ""
 
 echo "[4/4] 安装完成！"
 echo ""
 echo "  使用方法："
-echo "    1. 在「访达」中打开 $BASE"
-echo "    2. 双击「启动判分服务.command」启动服务（保持窗口打开）"
-echo "    3. 打开网页版答题，释义判分会自动使用本地模型"
+echo "    判分服务已在后台运行（无窗口）；"
+echo "    以后要用时，双击安装目录里的「启动判分服务.command」。"
+echo "    打开网页版答题，释义判分会自动使用本地模型。"
 echo ""
-echo "  如果浏览器询问「是否允许访问本地网络/设备」，请点允许。"
 echo "  服务地址：http://127.0.0.1:8001"
 echo ""
 read -r -p "按回车键关闭..." _
