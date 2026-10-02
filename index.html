@@ -13,6 +13,7 @@
     <h1>单词拼写测试</h1>
     <div class="student-badge">
       学生：<strong id="header-student">—</strong>
+      <span id="jev-badge" style="margin-left: 1rem; font-size: 0.85em; color: var(--text-ghost, #6b7280);">本地判分服务：检测中…</span>
     </div>
   </div>
 </header>
@@ -173,12 +174,13 @@
   <!-- JEV 下载页 -->
   <div id="download" class="tab-content">
     <div class="article-card">
-      <h2>下载 JEV 本地判分模型</h2>
-      <p class="hint">JEV 是一个决策模型，用于判断学生写的中文释义是否与标准答案意思接近。模型运行在本地，需要下载 llama.cpp 服务端（约 16MB）和 JEV 模型（约 529MB），下面的安装脚本会自动完成全部配置。</p>
+      <h2>本地判分服务（可选安装）</h2>
+      <p class="hint">装好后，网页版的释义判分会调用本机的 JEV 模型来判断「意思是否接近」——比文字匹配更聪明，比如把「令人难堪的」判为「尴尬的」的正确答案。不装也能正常答题（退化为文字匹配）。</p>
+      <p style="margin-bottom: 1.5rem; color: var(--paper-dim);">当前状态：<span id="jev-status-download" style="color: var(--text-ghost, #6b7280);">检测中…</span></p>
       
       <div style="background: linear-gradient(135deg, rgba(220, 38, 38, 0.08), rgba(220, 38, 38, 0.02)); border: 1px solid rgba(220, 38, 38, 0.2); border-radius: 12px; padding: 2rem; margin-bottom: 3rem;">
         <h3 style="margin-top: 0; color: var(--academic-red);">🚀 一键安装（推荐）</h3>
-        <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">自动下载并配置环境，无需手动解压和移动文件。系统：<span id="detected-os" style="color: var(--academic-red); font-weight: 600;"></span></p>
+        <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">自动下载 llama-server 与 JEV 模型（约 520MB）并创建启动脚本，无需手动解压和移动文件。你的系统：<span id="detected-os" style="color: var(--academic-red); font-weight: 600;"></span></p>
         <div class="actions">
           <button class="primary" onclick="downloadInstaller()" style="font-size: 1.1rem; padding: 1rem 2rem;">
             下载一键安装脚本 <span id="installer-ext">(.bat)</span>

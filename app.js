@@ -23,23 +23,94 @@ const OS_CONFIG = {
     execName: 'llama-server.exe',
     pathExample: '安装位置：C:\\Users\\<你的用户名>\\Desktop\\背词工具\\',
     modelPath: '模型文件：C:\\Users\\<你的用户名>\\Desktop\\背词工具\\jev\\Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
-    runCommand: '双击「启动判分服务.bat」启动；或运行 python start_jev_server.py（服务地址 http://127.0.0.1:8001）'
+    runCommand: '双击「JEV本地判分服务」或 启动判分服务.bat 启动；服务地址 http://127.0.0.1:8001'
   },
   macos: {
     label: 'macOS',
     execName: 'llama-server',
     pathExample: '安装位置：~/Desktop/背词工具/',
     modelPath: '模型文件：~/Desktop/背词工具/jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
-    runCommand: '双击「启动判分服务.command」启动；或运行 python3 start_jev_server.py（服务地址 http://127.0.0.1:8001）'
+    runCommand: '双击「启动判分服务.command」启动；服务地址 http://127.0.0.1:8001'
   },
   linux: {
     label: 'Linux',
     execName: 'llama-server',
     pathExample: '安装位置：~/Desktop/背词工具/',
     modelPath: '模型文件：~/Desktop/背词工具/jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
-    runCommand: 'python3 start_jev_server.py（服务地址 http://127.0.0.1:8001）'
+    runCommand: '运行 ./jev/llama/llama-server -m jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf --host 127.0.0.1 --port 8001 -c 2048 -t 8 --no-webui'
   }
 };
+
+// ============= 本地判分服务（JEV，本机 llama-server） =============
+const JEV_BASE = 'http://127.0.0.1:8001';
+const JEV_TEMPERATURE = 0.8800546821789332;
+const JEV_TOKEN_YES = 9542;
+const JEV_TOKEN_NO = 874;
+const JEV_THRESHOLD = 0.9;
+let jevOnline = false;
+const jevCache = new Map();
+
+function updateJevBadge() {
+  const text = jevOnline ? '本地判分服务：已连接' : '本地判分服务：未检测到（将用文字匹配）';
+  for (const id of ['jev-badge', 'jev-status-download']) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = text;
+      el.style.color = jevOnline ? 'var(--success, #16a34a)' : 'var(--text-ghost, #6b7280)';
+    }
+  }
+}
+
+async function jevHealth() {
+  try {
+    const r = await fetch(JEV_BASE + '/health', { signal: AbortSignal.timeout(2000) });
+    jevOnline = r.ok && (await r.json()).status === 'ok';
+  } catch (e) {
+    jevOnline = false;
+  }
+  updateJevBadge();
+  return jevOnline;
+}
+
+function jevPrompt(meaning, ans, k) {
+  const opts = ['一致: 意思相同或非常接近', '不一致: 意思不同或无关'];
+  const head = 'State:\n标准释义：' + meaning + '\n学生写的释义：' + ans + '\n\n'
+    + 'Question [choice]: 学生写的释义与标准释义表达的意思是否一致？\nOptions:\n'
+    + opts.map(o => '- ' + o + '\n').join('') + 'Judge each option:\n';
+  let tail = opts[k] + ' ->';
+  if (k) tail = opts[0] + ' ->\n' + tail;
+  return head + tail;
+}
+
+// 返回 {p} 或 {err}；p = 「意思接近」置信度 0~1
+async function jevJudge(meaning, ans) {
+  if (!ans || !/[0-9A-Za-z\u4e00-\u9fff]/.test(ans)) return { p: 0 };
+  const key = meaning + '||' + ans;
+  if (jevCache.has(key)) return { p: jevCache.get(key) };
+  const ds = [];
+  for (const k of [0, 1]) {
+    const r = await fetch(JEV_BASE + '/completion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: jevPrompt(meaning, ans, k),
+        n_predict: 1, temperature: 0, n_probs: 32, cache_prompt: false
+      }),
+      signal: AbortSignal.timeout(20000)
+    });
+    const out = await r.json();
+    const cp = (out.completion_probabilities || [])[0] || {};
+    const lp = {};
+    for (const e of (cp.top_logprobs || [])) lp[e.id] = e.logprob;
+    if (!(JEV_TOKEN_YES in lp) || !(JEV_TOKEN_NO in lp)) return { err: '缺少 yes/no 概率' };
+    ds.push(lp[JEV_TOKEN_YES] - lp[JEV_TOKEN_NO]);
+  }
+  let z = (ds[0] - ds[1]) / JEV_TEMPERATURE;
+  z = Math.max(-30, Math.min(30, z));
+  const p = 1 / (1 + Math.exp(-z));
+  jevCache.set(key, p);
+  return { p };
+}
 
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
@@ -48,6 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRecords();
   setupTabs();
   updateOSInfo();
+  jevHealth();
   
   document.getElementById('test-all').addEventListener('change', (e) => {
     document.getElementById('test-count').disabled = e.target.checked;
@@ -65,6 +137,8 @@ function setupTabs() {
       
       btn.classList.add('active');
       document.getElementById(target).classList.add('active');
+      
+      if (target === 'test' || target === 'download') jevHealth();
     });
   });
 }
@@ -341,6 +415,7 @@ function renderQuestion() {
   const sense = config.display === 'random' 
     ? word.senses[Math.floor(Math.random() * word.senses.length)]
     : null;
+  currentTest.askedSense = sense;
   
   const hint = generateHint(word.word, config.hint);
   
@@ -427,7 +502,7 @@ function startTimer(seconds) {
   }, 1000);
 }
 
-function submitAnswer(isTimeout = false) {
+async function submitAnswer(isTimeout = false) {
   if (timerInterval) {
     clearInterval(timerInterval);
     timerInterval = null;
@@ -439,7 +514,32 @@ function submitAnswer(isTimeout = false) {
   const spelling = document.getElementById('answer-spelling').value.trim().toLowerCase();
   const meanings = document.getElementById('answer-meanings').value.trim();
   
-  const correct = checkAnswer(word, spelling, meanings, config);
+  const spellingCorrect = spelling === word.word.toLowerCase();
+  let meaningsCorrect = meaningsMatch(word, meanings, config);
+  let judgeP = null;
+  
+  // 字面判不出 + 拼写正确 → 交给本地 JEV 模型判断「意思是否接近」
+  if (config.criteria === 'any' && spellingCorrect && !meaningsCorrect && !isBlankText(meanings)) {
+    if (!jevOnline) await jevHealth();
+    if (jevOnline) {
+      setSubmitBusy(true, '模型判分中…');
+      try {
+        const judgeTarget = currentTest.askedSense
+          ? currentTest.askedSense.meanings
+          : word.senses.map(s => s.meanings).join('；');
+        const res = await jevJudge(judgeTarget, meanings);
+        if (!res.err && res.p != null) {
+          judgeP = res.p;
+          if (res.p >= JEV_THRESHOLD) meaningsCorrect = true;
+        }
+      } catch (e) { /* 服务异常 → 静默退回字面判分 */ }
+      setSubmitBusy(false);
+    }
+  }
+  
+  const correct = config.criteria === 'any'
+    ? (spellingCorrect && meaningsCorrect)
+    : spellingCorrect;
   
   currentTest.answers.push({
     word: word.word,
@@ -447,33 +547,39 @@ function submitAnswer(isTimeout = false) {
     spelling,
     meanings,
     correct,
-    isTimeout
+    isTimeout,
+    judgeP
   });
   
-  renderFeedback(word, spelling, meanings, correct, isTimeout);
+  renderFeedback(word, spelling, meanings, correct, isTimeout, judgeP);
 }
 
-function checkAnswer(word, spelling, meanings, config) {
-  const spellingCorrect = spelling === word.word.toLowerCase();
-  
-  let meaningsCorrect = false;
-  
+function meaningsMatch(word, meanings, config) {
+  if (!meanings) return false;
   if (config.match === 'loose') {
     const userKeywords = extractKeywords(meanings);
     const correctKeywords = word.senses.flatMap(s => extractKeywords(s.meanings));
-    
-    meaningsCorrect = userKeywords.some(uk => correctKeywords.includes(uk));
-  } else {
-    const normalized = meanings.replace(/[；，、]/g, ';').toLowerCase();
-    const correctMeanings = word.senses.flatMap(s => s.meanings.split(/[；，、;]/).map(m => m.trim().toLowerCase()));
-    
-    meaningsCorrect = correctMeanings.some(cm => normalized.includes(cm));
+    return userKeywords.some(uk => correctKeywords.includes(uk));
   }
-  
-  if (config.criteria === 'any') {
-    return spellingCorrect && meaningsCorrect;
+  const normalized = meanings.replace(/[；，、]/g, ';').toLowerCase();
+  const correctMeanings = word.senses.flatMap(s => s.meanings.split(/[；，、;]/).map(m => m.trim().toLowerCase()));
+  return correctMeanings.some(cm => normalized.includes(cm));
+}
+
+function isBlankText(s) {
+  return !/[0-9A-Za-z\u4e00-\u9fff]/.test(s || '');
+}
+
+function setSubmitBusy(busy, label) {
+  const btn = document.querySelector('#test-ui .actions button.primary');
+  if (!btn) return;
+  if (busy) {
+    btn.disabled = true;
+    btn.dataset.oldLabel = btn.textContent;
+    btn.textContent = label || '判分中…';
   } else {
-    return spellingCorrect;
+    btn.disabled = false;
+    if (btn.dataset.oldLabel) btn.textContent = btn.dataset.oldLabel;
   }
 }
 
@@ -483,7 +589,7 @@ function extractKeywords(text) {
     .filter(w => w.length >= 2);
 }
 
-function renderFeedback(word, spelling, meanings, correct, isTimeout) {
+function renderFeedback(word, spelling, meanings, correct, isTimeout, judgeP = null) {
   const ui = document.getElementById('test-ui');
   
   ui.innerHTML = `
@@ -493,6 +599,7 @@ function renderFeedback(word, spelling, meanings, correct, isTimeout) {
       </div>
       
       ${isTimeout ? '<p style="color:var(--warning);margin-bottom:1.5rem;">超时自动提交</p>' : ''}
+      ${judgeP != null ? `<p style="color:var(--paper-dim);margin-bottom:1rem;">本地模型判分：接近度 ${judgeP.toFixed(2)}（${judgeP >= JEV_THRESHOLD ? '判为接近' : '低于 0.90'}）</p>` : ''}
       
       <div class="answer-box">
         <strong>正确答案：</strong><br>
@@ -724,8 +831,8 @@ function downloadInstaller() {
   a.click();
   
   if (isMac) {
-    status.innerHTML = `✅ 下载已开始：${installerFile}<br>下载后打开「终端」，执行：<code>bash ~/Downloads/${installerFile}</code>`;
+    status.innerHTML = `✅ 下载已开始：${installerFile}<br>下载后打开「终端」执行：<code>bash ~/Downloads/${installerFile}</code>；装好后双击「启动判分服务.command」保持窗口打开。`;
   } else {
-    status.innerHTML = `✅ 下载已开始：${installerFile}<br>下载后双击运行（浏览器若提示"不常下载的文件"，请选择保留）。`;
+    status.innerHTML = `✅ 下载已开始：${installerFile}<br>下载后双击运行（浏览器若提示"不常下载的文件"，请选择保留）；装好后双击桌面「JEV本地判分服务」保持窗口打开。`;
   }
 }

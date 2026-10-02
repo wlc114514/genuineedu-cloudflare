@@ -1,78 +1,78 @@
 @echo off
 setlocal
-title JEV ±¾µØÅÐ·Ö·þÎñÒ»¼ü°²×°
+title JEV æœ¬åœ°åˆ¤åˆ†æœåŠ¡ä¸€é”®å®‰è£…
 :: ============================================================
-::  JEV ±¾µØÅÐ·Ö·þÎñÒ»¼ü°²×°£¨Windows£©
-::  ÎªÍøÒ³°æ±³´Ê¹¤¾ßÌá¹©±¾µØÊÍÒåÅÐ·Ö£¨llama-server + JEV Ä£ÐÍ£©
+::  JEV æœ¬åœ°åˆ¤åˆ†æœåŠ¡ä¸€é”®å®‰è£…ï¼ˆWindowsï¼‰
+::  ä¸ºç½‘é¡µç‰ˆèƒŒè¯å·¥å…·æä¾›æœ¬åœ°é‡Šä¹‰åˆ¤åˆ†ï¼ˆllama-server + JEV æ¨¡åž‹ï¼‰
 :: ============================================================
 
 if not "%JEV_TEST_DIR%"=="" set "INSTALL_DIR=%JEV_TEST_DIR%"
-if "%INSTALL_DIR%"=="" set "INSTALL_DIR=%USERPROFILE%\Desktop\±³´Ê¹¤¾ß"
+if "%INSTALL_DIR%"=="" set "INSTALL_DIR=%USERPROFILE%\Desktop\èƒŒè¯å·¥å…·"
 
 echo ==================================================================
-echo         JEV ±¾µØÅÐ·Ö·þÎñÒ»¼ü°²×°£¨Windows£©
+echo         JEV æœ¬åœ°åˆ¤åˆ†æœåŠ¡ä¸€é”®å®‰è£…ï¼ˆWindowsï¼‰
 echo ==================================================================
 echo.
-echo   °²×°Î»ÖÃ£º%INSTALL_DIR%
-echo   °²×°ÄÚÈÝ£ºllama-server + JEV ÅÐ·ÖÄ£ÐÍ£¨Ô¼ 520MB£©
+echo   å®‰è£…ä½ç½®ï¼š%INSTALL_DIR%
+echo   å®‰è£…å†…å®¹ï¼šllama-server + JEV åˆ¤åˆ†æ¨¡åž‹ï¼ˆçº¦ 520MBï¼‰
 echo.
-echo   ×°ºÃºó£ºË«»÷×ÀÃæ¡¸JEV±¾µØÅÐ·Ö·þÎñ¡¹Æô¶¯£¬
-echo   ÍøÒ³°æÄ¬Ð´Ê±µÄÊÍÒåÅÐ·Ö»á×Ô¶¯Ê¹ÓÃËü¡£
+echo   è£…å¥½åŽï¼šåŒå‡»æ¡Œé¢ã€ŒJEVæœ¬åœ°åˆ¤åˆ†æœåŠ¡ã€å¯åŠ¨ï¼Œ
+echo   ç½‘é¡µç‰ˆé»˜å†™æ—¶çš„é‡Šä¹‰åˆ¤åˆ†ä¼šè‡ªåŠ¨ä½¿ç”¨å®ƒã€‚
 echo.
-echo   ÏÂÔØÖÐ¶Ï²»Òª½ô£¬ÖØÐÂÔËÐÐ±¾½Å±¾¼´¿É¶ÏµãÐø´«¡£
-echo   °²×°¹ý³ÌÇë±£³Ö±¾´°¿Ú´ò¿ª¡£
+echo   ä¸‹è½½ä¸­æ–­ä¸è¦ç´§ï¼Œé‡æ–°è¿è¡Œæœ¬è„šæœ¬å³å¯æ–­ç‚¹ç»­ä¼ ã€‚
+echo   å®‰è£…è¿‡ç¨‹è¯·ä¿æŒæœ¬çª—å£æ‰“å¼€ã€‚
 echo ==================================================================
 echo.
 
-echo [1/5] ¼ì²éÏµÍ³»·¾³...
+echo [1/5] æ£€æŸ¥ç³»ç»ŸçŽ¯å¢ƒ...
 where curl >nul 2>nul
 if errorlevel 1 goto err_curl
-echo         curl ¿ÉÓÃ
+echo         curl å¯ç”¨
 echo.
 
-echo [2/5] ´´½¨Ä¿Â¼...
+echo [2/5] åˆ›å»ºç›®å½•...
 mkdir "%INSTALL_DIR%" 2>nul
 mkdir "%INSTALL_DIR%\jev" 2>nul
 mkdir "%INSTALL_DIR%\jev\llama" 2>nul
 if not exist "%INSTALL_DIR%\jev\llama" goto err_mkdir
-echo         Íê³É
+echo         å®Œæˆ
 echo.
 
-echo [3/5] ×¼±¸ llama-server£¨Ô¼ 16MB£©...
+echo [3/5] å‡†å¤‡ llama-serverï¼ˆçº¦ 16MBï¼‰...
 set "LLAMA_EXE=%INSTALL_DIR%\jev\llama\llama-server.exe"
 set "LLAMA_ZIP=%TEMP%\llama-cpp-b8944.zip"
 if exist "%LLAMA_EXE%" goto llama_done
 if exist "%LLAMA_ZIP%" for %%A in ("%LLAMA_ZIP%") do if %%~zA GEQ 15895092 goto llama_extract
-echo         ÏÂÔØÖÐ£¨Ô´ 1/3£©...
+echo         ä¸‹è½½ä¸­ï¼ˆæº 1/3ï¼‰...
 curl -L -# --fail --retry 3 --connect-timeout 20 -C - -o "%LLAMA_ZIP%" "https://gh-proxy.com/https://github.com/ggml-org/llama.cpp/releases/download/b8944/llama-b8944-bin-win-cpu-x64.zip"
 if not errorlevel 1 goto llama_extract
-echo         Ô´ 1 Ê§°Ü£¬»»Ô´ 2/3...
+echo         æº 1 å¤±è´¥ï¼Œæ¢æº 2/3...
 curl -L -# --fail --retry 3 --connect-timeout 20 -C - -o "%LLAMA_ZIP%" "https://ghproxy.net/https://github.com/ggml-org/llama.cpp/releases/download/b8944/llama-b8944-bin-win-cpu-x64.zip"
 if not errorlevel 1 goto llama_extract
-echo         »»Ô´ 3/3£¨GitHub Ö±Á¬£©...
+echo         æ¢æº 3/3ï¼ˆGitHub ç›´è¿žï¼‰...
 curl -L -# --fail --retry 3 --connect-timeout 20 -C - -o "%LLAMA_ZIP%" "https://github.com/ggml-org/llama.cpp/releases/download/b8944/llama-b8944-bin-win-cpu-x64.zip"
 if not errorlevel 1 goto llama_extract
-echo         ÖØÐÂ³¢ÊÔÍêÕûÏÂÔØ...
+echo         é‡æ–°å°è¯•å®Œæ•´ä¸‹è½½...
 curl -L -# --fail --retry 3 --connect-timeout 20 -o "%LLAMA_ZIP%" "https://gh-proxy.com/https://github.com/ggml-org/llama.cpp/releases/download/b8944/llama-b8944-bin-win-cpu-x64.zip"
 if errorlevel 1 goto err_llama
 
 :llama_extract
-echo         ÕýÔÚ½âÑ¹...
+echo         æ­£åœ¨è§£åŽ‹...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$z='%LLAMA_ZIP%'; $d='%INSTALL_DIR%\jev\llama'; $t=Join-Path $env:TEMP ('llama_x_'+[guid]::NewGuid().ToString('N')); Expand-Archive -LiteralPath $z -DestinationPath $t -Force; $f=Get-ChildItem $t -Recurse -Filter 'llama-server.exe' | Select-Object -First 1; if ($f) { Copy-Item (Join-Path $f.DirectoryName '*') $d -Recurse -Force }; Remove-Item $t -Recurse -Force -ErrorAction SilentlyContinue"
 if not exist "%LLAMA_EXE%" goto err_llama
 del "%LLAMA_ZIP%" 2>nul
 
 :llama_done
-echo         Íê³É
+echo         å®Œæˆ
 echo.
 
-echo [4/5] ÏÂÔØ JEV ÅÐ·ÖÄ£ÐÍ£¨Ô¼ 505MB£¬ÇëÄÍÐÄµÈ´ý£©...
+echo [4/5] ä¸‹è½½ JEV åˆ¤åˆ†æ¨¡åž‹ï¼ˆçº¦ 505MBï¼Œè¯·è€å¿ƒç­‰å¾…ï¼‰...
 set "MODEL=%INSTALL_DIR%\jev\Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf"
 if exist "%MODEL%" for %%A in ("%MODEL%") do if %%~zA GEQ 528000000 goto model_done
-echo         ÏÂÔØÖÐ£¨hf-mirror ¾µÏñ£©...
+echo         ä¸‹è½½ä¸­ï¼ˆhf-mirror é•œåƒï¼‰...
 curl -L -# --fail --retry 3 --connect-timeout 20 -C - -o "%MODEL%" "https://hf-mirror.com/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF/resolve/main/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf"
 if not errorlevel 1 goto model_check
-echo         ¾µÏñÊ§°Ü£¬ÇëÉÔºòÖØÊÔÒ»´Î£¨·þÎñÆ÷·±Ã¦Ê±ÓÐÐ§£©...
+echo         é•œåƒå¤±è´¥ï¼Œè¯·ç¨å€™é‡è¯•ä¸€æ¬¡ï¼ˆæœåŠ¡å™¨ç¹å¿™æ—¶æœ‰æ•ˆï¼‰...
 timeout /t 5 /nobreak >nul
 curl -L -# --fail --retry 5 --retry-delay 3 --connect-timeout 20 -C - -o "%MODEL%" "https://hf-mirror.com/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF/resolve/main/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf"
 
@@ -81,84 +81,84 @@ if not exist "%MODEL%" goto err_model
 for %%A in ("%MODEL%") do if %%~zA LSS 528000000 goto err_model
 
 :model_done
-echo         Íê³É
+echo         å®Œæˆ
 echo.
 
-echo [5/5] ´´½¨Æô¶¯½Å±¾...
+echo [5/5] åˆ›å»ºå¯åŠ¨è„šæœ¬...
 (
 echo @echo off
-echo title JEV±¾µØÅÐ·Ö·þÎñ-±£³Ö±¾´°¿Ú´ò¿ª
+echo title JEVæœ¬åœ°åˆ¤åˆ†æœåŠ¡-ä¿æŒæœ¬çª—å£æ‰“å¼€
 echo cd /d "%%~dp0"
 echo echo.
-echo echo JEV ±¾µØÅÐ·Ö·þÎñÆô¶¯ÖÐ...
-echo echo ·þÎñµØÖ· http://127.0.0.1:8001
-echo echo ´ò¿ªÍøÒ³°æÄ¬Ð´Ê±£¬ÊÍÒåÅÐ·Ö»á×Ô¶¯Ê¹ÓÃ±¾·þÎñ¡£
-echo echo Çë±£³Ö±¾´°¿Ú´ò¿ª£»°´ Ctrl+C Í£Ö¹·þÎñ¡£
+echo echo JEV æœ¬åœ°åˆ¤åˆ†æœåŠ¡å¯åŠ¨ä¸­...
+echo echo æœåŠ¡åœ°å€ http://127.0.0.1:8001
+echo echo æ‰“å¼€ç½‘é¡µç‰ˆé»˜å†™æ—¶ï¼Œé‡Šä¹‰åˆ¤åˆ†ä¼šè‡ªåŠ¨ä½¿ç”¨æœ¬æœåŠ¡ã€‚
+echo echo è¯·ä¿æŒæœ¬çª—å£æ‰“å¼€ï¼›æŒ‰ Ctrl+C åœæ­¢æœåŠ¡ã€‚
 echo echo.
 echo "%%~dp0jev\llama\llama-server.exe" -m "%%~dp0jev\Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf" --host 127.0.0.1 --port 8001 -c 2048 -t 8 --no-webui
 echo echo.
-echo echo ·þÎñÒÑÍ£Ö¹¡£°´ÈÎÒâ¼ü¹Ø±Õ...
+echo echo æœåŠ¡å·²åœæ­¢ã€‚æŒ‰ä»»æ„é”®å…³é—­...
 echo pause
-) > "%INSTALL_DIR%\Æô¶¯ÅÐ·Ö·þÎñ.bat"
+) > "%INSTALL_DIR%\å¯åŠ¨åˆ¤åˆ†æœåŠ¡.bat"
 if not "%JEV_TEST_DIR%"=="" goto no_shortcut
-powershell -NoProfile -Command "$WS=New-Object -ComObject WScript.Shell; $SC=$WS.CreateShortcut('%USERPROFILE%\Desktop\JEV±¾µØÅÐ·Ö·þÎñ.lnk'); $SC.TargetPath='%INSTALL_DIR%\Æô¶¯ÅÐ·Ö·þÎñ.bat'; $SC.WorkingDirectory='%INSTALL_DIR%'; $SC.IconLocation='shell32.dll,277'; $SC.Save()" 2>nul
+powershell -NoProfile -Command "$WS=New-Object -ComObject WScript.Shell; $SC=$WS.CreateShortcut('%USERPROFILE%\Desktop\JEVæœ¬åœ°åˆ¤åˆ†æœåŠ¡.lnk'); $SC.TargetPath='%INSTALL_DIR%\å¯åŠ¨åˆ¤åˆ†æœåŠ¡.bat'; $SC.WorkingDirectory='%INSTALL_DIR%'; $SC.IconLocation='shell32.dll,277'; $SC.Save()" 2>nul
 :no_shortcut
-echo         Íê³É
+echo         å®Œæˆ
 echo.
 
 echo ==================================================================
-echo    °²×°Íê³É£¡
+echo    å®‰è£…å®Œæˆï¼
 echo ==================================================================
 echo.
-echo   Ê¹ÓÃ·½·¨£º
-echo     1. Ë«»÷×ÀÃæ¡¸JEV±¾µØÅÐ·Ö·þÎñ¡¹Æô¶¯·þÎñ£¨±£³Ö´°¿Ú´ò¿ª£©
-echo     2. ´ò¿ªÍøÒ³°æ´ðÌâ£¬ÊÍÒåÅÐ·Ö»á×Ô¶¯Ê¹ÓÃ±¾µØÄ£ÐÍ
+echo   ä½¿ç”¨æ–¹æ³•ï¼š
+echo     1. åŒå‡»æ¡Œé¢ã€ŒJEVæœ¬åœ°åˆ¤åˆ†æœåŠ¡ã€å¯åŠ¨æœåŠ¡ï¼ˆä¿æŒçª—å£æ‰“å¼€ï¼‰
+echo     2. æ‰“å¼€ç½‘é¡µç‰ˆç­”é¢˜ï¼Œé‡Šä¹‰åˆ¤åˆ†ä¼šè‡ªåŠ¨ä½¿ç”¨æœ¬åœ°æ¨¡åž‹
 echo.
-echo   Èç¹ûä¯ÀÀÆ÷Ñ¯ÎÊ¡¸ÊÇ·ñÔÊÐí·ÃÎÊ±¾µØÍøÂç/Éè±¸¡¹£¬ÇëµãÔÊÐí¡£
-echo   ·þÎñµØÖ·£ºhttp://127.0.0.1:8001
+echo   å¦‚æžœæµè§ˆå™¨è¯¢é—®ã€Œæ˜¯å¦å…è®¸è®¿é—®æœ¬åœ°ç½‘ç»œ/è®¾å¤‡ã€ï¼Œè¯·ç‚¹å…è®¸ã€‚
+echo   æœåŠ¡åœ°å€ï¼šhttp://127.0.0.1:8001
 echo ==================================================================
 echo.
 set "SN="
-set /p SN=ÊÇ·ñÁ¢¼´Æô¶¯ÅÐ·Ö·þÎñ£¿(Y/N): 
+set /p SN=æ˜¯å¦ç«‹å³å¯åŠ¨åˆ¤åˆ†æœåŠ¡ï¼Ÿ(Y/N): 
 if /i not "%SN%"=="Y" goto the_end
-start "" "%INSTALL_DIR%\Æô¶¯ÅÐ·Ö·þÎñ.bat"
+start "" "%INSTALL_DIR%\å¯åŠ¨åˆ¤åˆ†æœåŠ¡.bat"
 
 :the_end
 echo.
-echo °´ÈÎÒâ¼ü¹Ø±Õ±¾´°¿Ú...
+echo æŒ‰ä»»æ„é”®å…³é—­æœ¬çª—å£...
 pause >nul
 exit /b 0
 
 :err_curl
 echo.
-echo [´íÎó] Î´ÕÒµ½ curl£º±¾°²×°Æ÷ÐèÒª Windows 10 (1803) ¼°ÒÔÉÏ°æ±¾¡£
-echo        ÇëÉý¼¶ÏµÍ³ºóÖØÊÔ£¬»ò²Î¿¼ https://genuineedu.pages.dev ÊÖ¶¯°²×°¡£
+echo [é”™è¯¯] æœªæ‰¾åˆ° curlï¼šæœ¬å®‰è£…å™¨éœ€è¦ Windows 10 (1803) åŠä»¥ä¸Šç‰ˆæœ¬ã€‚
+echo        è¯·å‡çº§ç³»ç»ŸåŽé‡è¯•ï¼Œæˆ–å‚è€ƒ https://genuineedu.pages.dev æ‰‹åŠ¨å®‰è£…ã€‚
 goto the_end_fail
 
 :err_mkdir
 echo.
-echo [´íÎó] ÎÞ·¨´´½¨Ä¿Â¼£º%INSTALL_DIR%
-echo        Çë¼ì²é´ÅÅÌ¿Õ¼äÓëÈ¨ÏÞºóÖØÊÔ¡£
+echo [é”™è¯¯] æ— æ³•åˆ›å»ºç›®å½•ï¼š%INSTALL_DIR%
+echo        è¯·æ£€æŸ¥ç£ç›˜ç©ºé—´ä¸Žæƒé™åŽé‡è¯•ã€‚
 goto the_end_fail
 
 :err_llama
 echo.
-echo [´íÎó] llama-server ÏÂÔØ»ò½âÑ¹Ê§°Ü¡£ÖØÐÂÔËÐÐ±¾½Å±¾¿É¶ÏµãÐø´«¡£
-echo        ÊÖ¶¯·½°¸£º·ÃÎÊ https://github.com/ggml-org/llama.cpp/releases/tag/b8944
-echo        ÏÂÔØ llama-b8944-bin-win-cpu-x64.zip£¬½âÑ¹ºó°ÑÆäÖÐËùÓÐÎÄ¼þ·Åµ½£º
+echo [é”™è¯¯] llama-server ä¸‹è½½æˆ–è§£åŽ‹å¤±è´¥ã€‚é‡æ–°è¿è¡Œæœ¬è„šæœ¬å¯æ–­ç‚¹ç»­ä¼ ã€‚
+echo        æ‰‹åŠ¨æ–¹æ¡ˆï¼šè®¿é—® https://github.com/ggml-org/llama.cpp/releases/tag/b8944
+echo        ä¸‹è½½ llama-b8944-bin-win-cpu-x64.zipï¼Œè§£åŽ‹åŽæŠŠå…¶ä¸­æ‰€æœ‰æ–‡ä»¶æ”¾åˆ°ï¼š
 echo        %INSTALL_DIR%\jev\llama\
 goto the_end_fail
 
 :err_model
 echo.
-echo [´íÎó] Ä£ÐÍÏÂÔØÊ§°Ü»ò²»ÍêÕû¡£ÖØÐÂÔËÐÐ±¾½Å±¾¿É¶ÏµãÐø´«¡£
-echo        ÊÖ¶¯·½°¸£º´Ó https://hf-mirror.com/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF
-echo        ÏÂÔØ Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf£¬·Åµ½£º
+echo [é”™è¯¯] æ¨¡åž‹ä¸‹è½½å¤±è´¥æˆ–ä¸å®Œæ•´ã€‚é‡æ–°è¿è¡Œæœ¬è„šæœ¬å¯æ–­ç‚¹ç»­ä¼ ã€‚
+echo        æ‰‹åŠ¨æ–¹æ¡ˆï¼šä»Ž https://hf-mirror.com/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF
+echo        ä¸‹è½½ Jev-Style-0.8B-Decision-v3-Q4_K_M.ggufï¼Œæ”¾åˆ°ï¼š
 echo        %INSTALL_DIR%\jev\
 goto the_end_fail
 
 :the_end_fail
 echo.
-echo °´ÈÎÒâ¼ü¹Ø±Õ±¾´°¿Ú...
+echo æŒ‰ä»»æ„é”®å…³é—­æœ¬çª—å£...
 pause >nul
 exit /b 1
