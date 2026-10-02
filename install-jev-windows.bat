@@ -88,14 +88,14 @@ echo [5/5] 创建启动脚本...
 (
 echo @echo off
 echo title JEV本地判分服务-保持本窗口打开
-echo cd /d "%%~dp0"
+echo cd /d "%%~dp0jev"
 echo echo.
 echo echo JEV 本地判分服务启动中...
 echo echo 服务地址 http://127.0.0.1:8001
 echo echo 打开网页版默写时，释义判分会自动使用本服务。
 echo echo 请保持本窗口打开；按 Ctrl+C 停止服务。
 echo echo.
-echo "%%~dp0jev\llama\llama-server.exe" -m "%%~dp0jev\Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf" --host 127.0.0.1 --port 8001 -c 2048 -t 8 --no-webui
+echo llama\llama-server.exe -m "Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf" --host 127.0.0.1 --port 8001 -c 2048 -t 8 --no-webui
 echo echo.
 echo echo 服务已停止。按任意键关闭...
 echo pause
