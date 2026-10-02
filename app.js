@@ -30,7 +30,7 @@ const OS_CONFIG = {
     execName: 'llama-server',
     pathExample: '安装位置：~/Library/Application Support/JEV/',
     modelPath: '模型文件：~/Library/Application Support/JEV/jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf',
-    runCommand: '双击安装目录里的「启动判分服务.command」；服务地址 http://127.0.0.1:8001'
+    runCommand: '双击「启动判分服务.command」启动、「停止判分服务.command」停止；服务地址 http://127.0.0.1:8001'
   },
   linux: {
     label: 'Linux',
@@ -73,6 +73,12 @@ window.addEventListener('pagehide', () => {
   try { navigator.sendBeacon(JEV_CTRL + '/bye', 'x'); } catch (e) { /* ignore */ }
 });
 
+// macOS 没有协议注册：按钮不尝试唤起，改为显示操作提示
+function jevMacHint() {
+  const el = document.getElementById('jev-mac-hint');
+  if (el) el.style.display = 'inline';
+}
+
 function updateJevBadge() {
   const text = jevOnline ? '本地判分服务：已连接' : '本地判分服务：未启动';
   for (const id of ['jev-badge', 'jev-status-download']) {
@@ -98,6 +104,7 @@ function updateJevBadge() {
 }
 
 async function jevStart() {
+  if (OS === 'macos') { jevMacHint(); return; }
   const btn = document.getElementById('jev-start-btn');
   if (btn) { btn.disabled = true; btn.textContent = '启动中…'; }
   jevUserStopped = false;
@@ -131,6 +138,7 @@ async function jevStart() {
 }
 
 async function jevStop() {
+  if (OS === 'macos') { jevMacHint(); return; }
   const btn = document.getElementById('jev-stop-btn');
   if (btn) { btn.disabled = true; btn.textContent = '停止中…'; }
   jevUserStopped = true;

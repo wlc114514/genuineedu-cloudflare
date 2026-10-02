@@ -13,7 +13,7 @@ echo ""
 echo "  安装位置：$BASE"
 echo "  安装内容：llama-server + JEV 判分模型（约 520MB）"
 echo ""
-echo "  装好后双击「启动判分服务.command」启动，"
+echo "  装好后双击「启动判分服务.command」启动（停止用「停止判分服务.command」），"
 echo "  网页版默写时的释义判分会自动使用它。"
 echo ""
 echo "  下载中断不要紧，重新运行即可断点续传。"
@@ -95,21 +95,33 @@ else
 fi
 echo ""
 
-echo "[3/4] 创建启动脚本..."
+echo "[3/4] 创建启动/停止脚本..."
 cat > "$BASE/启动判分服务.command" <<'EOS'
 #!/bin/bash
 cd "$(dirname "$0")"
 if curl -s -m 2 http://127.0.0.1:8001/health >/dev/null 2>&1; then
-  echo "判分服务已在运行。"
+  echo "判分服务已在运行。停止：双击「停止判分服务.command」。"
   read -r -p "按回车键关闭..." _
   exit 0
 fi
 nohup ./jev/llama/llama-server -m "jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf" --host 127.0.0.1 --port 8001 -c 2048 -t 8 --no-webui >> "jev/server.log" 2>&1 &
 sleep 1
-echo "判分服务已在后台启动（无窗口，可以关闭此窗口）。"
+echo "判分服务已在后台启动（可以关闭此窗口）。停止：双击「停止判分服务.command」。"
 read -r -p "按回车键关闭..." _
 EOS
 chmod +x "$BASE/启动判分服务.command"
+
+# 停止脚本（双击即停）
+cat > "$BASE/停止判分服务.command" <<'EOS'
+#!/bin/bash
+if pkill -f "jev/llama/llama-server" 2>/dev/null; then
+  echo "判分服务已停止。"
+else
+  echo "判分服务未在运行。"
+fi
+read -r -p "按回车键关闭..." _
+EOS
+chmod +x "$BASE/停止判分服务.command"
 
 # 立即在后台启动一次（若尚未运行）
 if ! curl -s -m 2 http://127.0.0.1:8001/health >/dev/null 2>&1; then
@@ -121,9 +133,9 @@ echo ""
 echo "[4/4] 安装完成！"
 echo ""
 echo "  使用方法："
-echo "    判分服务已在后台运行（无窗口）；"
-echo "    以后要用时，双击安装目录里的「启动判分服务.command」。"
-echo "    打开网页版答题，释义判分会自动使用本地模型。"
+echo "    1. 双击「启动判分服务.command」启动（后台运行）"
+echo "    2. 双击「停止判分服务.command」停止"
+echo "    3. 打开网页版答题，释义判分会自动使用本地模型"
 echo ""
 echo "  服务地址：http://127.0.0.1:8001"
 echo ""
