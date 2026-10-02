@@ -68,6 +68,10 @@ function updateJevBadge() {
       if (!btn.disabled && btn.textContent !== '启动中…') btn.textContent = '启动判分服务';
     }
   }
+  const stopBtn = document.getElementById('jev-stop-btn');
+  if (stopBtn && !stopBtn.disabled) {
+    stopBtn.style.display = jevOnline ? 'inline-block' : 'none';
+  }
 }
 
 function jevStart() {
@@ -93,6 +97,29 @@ function jevStart() {
       }
     }
   }, 2500);
+}
+
+function jevStop() {
+  const btn = document.getElementById('jev-stop-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '停止中…'; }
+  // 通过自定义协议 jev://stop 关闭本地服务
+  try {
+    const a = document.createElement('a');
+    a.href = 'jev://stop';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } catch (e) { /* ignore */ }
+  let n = 0;
+  const timer = setInterval(async () => {
+    n++;
+    const ok = await jevHealth();
+    if (!ok || n >= 8) {
+      clearInterval(timer);
+      if (btn) { btn.disabled = false; btn.textContent = '停止'; }
+      updateJevBadge();
+    }
+  }, 1200);
 }
 
 async function jevHealth() {
@@ -154,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
   updateOSInfo();
   jevHealth();
+  setInterval(jevHealth, 15000);
   
   document.getElementById('test-all').addEventListener('change', (e) => {
     document.getElementById('test-count').disabled = e.target.checked;
