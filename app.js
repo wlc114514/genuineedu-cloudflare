@@ -53,6 +53,7 @@ const jevCache = new Map();
 // ---- 网页 ↔ 托盘管家联动（打开网页自动拉起 / 关闭网页自动停止） ----
 const JEV_CTRL = 'http://127.0.0.1:8002';
 let jevBurst = null;
+let jevUserStopped = false;   // 用户手动停止后暂停心跳，直到再点启动或刷新页面
 function jevBurstPoll() {
   if (jevBurst) return;
   let n = 0;
@@ -63,6 +64,7 @@ function jevBurstPoll() {
   }, 2000);
 }
 function jevPing() {
+  if (jevUserStopped) return;
   fetch(JEV_CTRL + '/ping', { cache: 'no-store' })
     .then(() => { if (!jevOnline) jevBurstPoll(); })
     .catch(() => {});
@@ -95,17 +97,25 @@ function updateJevBadge() {
   }
 }
 
-function jevStart() {
+async function jevStart() {
   const btn = document.getElementById('jev-start-btn');
   if (btn) { btn.disabled = true; btn.textContent = '启动中…'; }
-  // 通过自定义协议 jev:// 唤起本地服务（浏览器首次会询问，选「允许/打开」）
+  jevUserStopped = false;
+  // 优先走本地管家接口（普通请求，无弹窗）；失败才退回 jev:// 协议
+  let viaTray = false;
   try {
-    const a = document.createElement('a');
-    a.href = 'jev://start';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } catch (e) { /* ignore */ }
+    const r = await fetch(JEV_CTRL + '/start', { cache: 'no-store', signal: AbortSignal.timeout(2500) });
+    viaTray = r.ok;
+  } catch (e) { viaTray = false; }
+  if (!viaTray) {
+    try {
+      const a = document.createElement('a');
+      a.href = 'jev://start';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) { /* ignore */ }
+  }
   let n = 0;
   const timer = setInterval(async () => {
     n++;
@@ -120,17 +130,25 @@ function jevStart() {
   }, 2500);
 }
 
-function jevStop() {
+async function jevStop() {
   const btn = document.getElementById('jev-stop-btn');
   if (btn) { btn.disabled = true; btn.textContent = '停止中…'; }
-  // 通过自定义协议 jev://stop 关闭本地服务
+  jevUserStopped = true;
+  // 优先走本地管家接口（普通请求，无弹窗）；失败才退回 jev:// 协议
+  let viaTray = false;
   try {
-    const a = document.createElement('a');
-    a.href = 'jev://stop';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  } catch (e) { /* ignore */ }
+    const r = await fetch(JEV_CTRL + '/stop', { cache: 'no-store', signal: AbortSignal.timeout(2500) });
+    viaTray = r.ok;
+  } catch (e) { viaTray = false; }
+  if (!viaTray) {
+    try {
+      const a = document.createElement('a');
+      a.href = 'jev://stop';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) { /* ignore */ }
+  }
   let n = 0;
   const timer = setInterval(async () => {
     n++;
