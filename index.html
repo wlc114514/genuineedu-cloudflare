@@ -21,6 +21,7 @@
   <button class="active" data-tab="library">词库</button>
   <button data-tab="test">测试</button>
   <button data-tab="results">结果</button>
+  <button data-tab="download">下载 JEV</button>
 </nav>
 
 <main class="container">
@@ -166,6 +167,44 @@
     <div class="article-card">
       <h2>测试记录</h2>
       <div id="records-list"></div>
+    </div>
+  </div>
+  
+  <!-- JEV 下载页 -->
+  <div id="download" class="tab-content">
+    <div class="article-card">
+      <h2>下载 JEV 本地判分模型</h2>
+      <p class="hint">JEV 是一个决策模型，用于判断学生写的中文释义是否与标准答案意思接近。模型运行在本地，需要下载 llama.cpp 服务端（19MB）和 Jev-Style-0.8B 模型（529MB）。</p>
+      
+      <h3>1. 下载 llama-server.exe</h3>
+      <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">llama.cpp 官方 Windows CPU 版本，用于运行 GGUF 模型。</p>
+      <div class="actions">
+        <button class="primary" onclick="downloadLlamaCpp()">
+          下载 llama-server.exe (~19MB)
+        </button>
+      </div>
+      <div id="llama-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
+      
+      <h3 style="margin-top: 3rem;">2. 下载 Jev-Style-0.8B 模型</h3>
+      <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">Qwen3.5-0.8B 底座的决策模型，支持 19+ 语言包括中文，GGUF Q4_K_M 量化版本 529MB。</p>
+      <div class="actions">
+        <button class="primary" onclick="downloadJevModel()">
+          下载 Jev-Style-0.8B-Q4_K_M.gguf (~529MB)
+        </button>
+      </div>
+      <div id="jev-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
+      
+      <h3 style="margin-top: 3rem;">使用说明</h3>
+      <div style="background: rgba(249, 250, 251, 0.03); border-left: 4px solid var(--academic-red); padding: 2rem; line-height: 1.9; color: var(--paper-dim);">
+        <p style="margin-bottom: 1rem;"><strong style="color: var(--paper);">文件存放位置：</strong></p>
+        <p style="font-family: var(--mono); margin-bottom: 1.5rem;">C:\Users\你的用户名\Desktop\背词工具\jev\llama\llama-server.exe<br>C:\Users\你的用户名\Desktop\背词工具\jev\Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf</p>
+        
+        <p style="margin-bottom: 1rem;"><strong style="color: var(--paper);">启动命令：</strong></p>
+        <p style="font-family: var(--mono); margin-bottom: 1.5rem;">llama-server.exe -m Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf --host 127.0.0.1 --port 8087 -c 2048 -t 8 --no-webui</p>
+        
+        <p style="margin-bottom: 1rem;"><strong style="color: var(--paper);">判分阈值：</strong></p>
+        <p>置信度 ≥0.9 判定为接近（可在 dictation_judge.json 配置），模型常驻内存约 1GB，单次判定约 330ms。</p>
+      </div>
     </div>
   </div>
 

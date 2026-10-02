@@ -593,3 +593,52 @@ function deleteRecord(id) {
   
   renderRecords();
 }
+
+// JEV 模型下载
+async function downloadLlamaCpp() {
+  const status = document.getElementById('llama-status');
+  status.textContent = '正在获取最新版本...';
+  
+  try {
+    // 获取 llama.cpp 最新 release
+    const releaseResp = await fetch('https://api.github.com/repos/ggerganov/llama.cpp/releases/latest');
+    const release = await releaseResp.json();
+    
+    // 找到 Windows CPU x64 版本
+    const asset = release.assets.find(a => a.name.includes('win-cpu-x64.zip'));
+    
+    if (!asset) {
+      status.textContent = '❌ 未找到 Windows x64 版本';
+      return;
+    }
+    
+    status.textContent = `找到版本 ${release.tag_name}，准备下载 ${(asset.size / 1024 / 1024).toFixed(1)}MB...`;
+    
+    // 触发浏览器下载
+    const a = document.createElement('a');
+    a.href = asset.browser_download_url;
+    a.download = asset.name;
+    a.click();
+    
+    status.textContent = `✅ 下载已开始：${asset.name}（解压后找到 llama-server.exe 放到 背词工具\\jev\\llama\\ 目录）`;
+  } catch (err) {
+    status.textContent = `❌ 下载失败：${err.message}`;
+  }
+}
+
+async function downloadJevModel() {
+  const status = document.getElementById('jev-status');
+  
+  // HuggingFace mirror 直链
+  const modelUrl = 'https://hf-mirror.com/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF/resolve/main/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf';
+  
+  status.textContent = '准备下载 529MB 模型文件...';
+  
+  // 触发浏览器下载
+  const a = document.createElement('a');
+  a.href = modelUrl;
+  a.download = 'Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf';
+  a.click();
+  
+  status.textContent = '✅ 下载已开始：Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf（529MB，放到 背词工具\\jev\\ 目录）';
+}
