@@ -954,7 +954,7 @@ function downloadInstaller() {
   a.click();
   
   if (isMac) {
-    status.innerHTML = `✅ 下载已开始：${installerFile}<br>用法：解压后<b>右键点「install-jev-macos.command」→ 打开</b>（首次会确认一次），会自动弹出终端完成安装。<br>如果卡住，改用最稳的一行命令——打开「终端」粘贴：<code>curl -fsSL https://genuineedu.pages.dev/install-jev-macos.sh | bash</code>`;
+    status.innerHTML = `✅ 下载已开始：${installerFile}<br>用法：解压后<b>右键点「install-jev-macos.command」→ 打开</b>（首次会确认一次），会自动弹出终端完成安装。<br>若提示「没有正确的访问权限」：终端里执行 <code>chmod +x </code>（带空格）后把 .command 拖进终端按回车即可。<br>如果卡住，改用最稳的一行命令——打开「终端」粘贴：<code>curl -fsSL https://genuineedu.pages.dev/install-jev-macos.sh | bash</code>`;
   } else {
     status.innerHTML = `✅ 下载已开始：${installerFile}<br>下载后双击运行（浏览器若提示"不常下载的文件"，请选择保留）；装好后双击桌面「JEV本地判分服务」保持窗口打开。`;
   }
