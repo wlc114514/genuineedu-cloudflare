@@ -876,7 +876,7 @@ function updateOSInfo() {
   // 更新安装脚本后缀
   const extEl = document.getElementById('installer-ext');
   if (extEl) {
-    extEl.textContent = OS === 'macos' ? '(.sh)' : '(.bat)';
+    extEl.textContent = OS === 'macos' ? '(.zip)' : '(.bat)';
   }
   
   // 更新按钮文本
