@@ -197,9 +197,12 @@
             <li><strong>Windows：</strong>下载后<strong>双击运行</strong> install-jev-windows.bat，等它跑完（自动下载约 520MB，可断点续传）。安装到系统应用目录，<strong>无窗口、桌面不留图标</strong></li>
             <li><strong>自动联动：</strong>打开本网页会<strong>自动在后台启动</strong>判分服务（几秒就绪）；关闭网页约 1 分钟后<strong>自动停止</strong>、释放内存——日常使用完全不用管它</li>
             <li><strong>托盘图标：</strong>托盘区 JEV 管家图标（绿=运行中 / 灰=已停止）——右键可手动<strong>启动/停止</strong>服务、打开本网站、退出托盘</li>
-            <li><strong>macOS：</strong>下载后打开<strong>「终端」</strong>，执行：<code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.5rem; border-radius: 4px;">bash ~/Downloads/install-jev-macos.sh</code>；装好后双击安装目录里的<strong>「启动判分服务.command」</strong>启动、<strong>「停止判分服务.command」</strong>停止（mac 无自动联动，关网页不会自动停）</li>
+            <li><strong>macOS（方式 A，最稳）：</strong>打开<strong>「终端」</strong>（聚焦搜索里搜 Terminal），粘贴下面这一行、按回车，会自动完成安装：<br><code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.5rem; border-radius: 4px;">curl -fsSL https://genuineedu.pages.dev/install-jev-macos.sh | bash</code> <button onclick="copyMacCmd(this)" style="margin-left: 0.3rem; font-size: 0.85em; padding: 0.1rem 0.5rem; cursor: pointer; border: 1px solid var(--border, #9ca3af); border-radius: 4px; background: transparent; color: inherit;">复制</button></li>
+            <li><strong>macOS（方式 B，自动开终端）：</strong><a href="install-jev-macos.zip" download>下载双击安装包</a> → 解压后<strong>右键点「install-jev-macos.command」→ 打开</strong>（首次确认一次）→ 会自动弹出终端完成安装</li>
+            <li>mac 装好后：双击安装目录里的<strong>「启动判分服务.command」</strong>启动、<strong>「停止判分服务.command」</strong>停止（mac 无自动联动，关网页不会自动停）</li>
             <li>Windows 若没自动起来（比如管家被退出过）：点顶部<strong>「启动判分服务」按钮</strong>兜底；运行中点<strong>「停止」</strong>可立刻关闭</li>
             <li>不装服务也能答题（退化为文字匹配）；若浏览器询问「是否允许访问本地网络/设备」，请点击<strong>允许</strong></li>
+            <li><strong>mac 提示 command not found / 无法打开？</strong>.sh 文件<strong>不能双击</strong>（双击只会用文本编辑器打开）；方式 B 的 .command 若提示「无法验证开发者」，请<strong>右键 → 打开 → 再点「打开」</strong>；实在不行就用方式 A 一行命令</li>
           </ul>
         </details>
       </div>

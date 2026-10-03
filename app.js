@@ -79,6 +79,18 @@ function jevMacHint() {
   if (el) el.style.display = 'inline';
 }
 
+// 复制 mac 安装一行命令
+function copyMacCmd(btn) {
+  const cmd = 'curl -fsSL https://genuineedu.pages.dev/install-jev-macos.sh | bash';
+  navigator.clipboard.writeText(cmd).then(() => {
+    const old = btn.textContent;
+    btn.textContent = '已复制 ✓';
+    setTimeout(() => { btn.textContent = old; }, 2000);
+  }).catch(() => {
+    btn.textContent = '复制失败，请手动选中复制';
+  });
+}
+
 function updateJevBadge() {
   const text = jevOnline ? '本地判分服务：已连接' : '本地判分服务：未启动';
   for (const id of ['jev-badge', 'jev-status-download']) {
@@ -931,7 +943,7 @@ async function downloadJevModel() {
 function downloadInstaller() {
   const status = document.getElementById('installer-status');
   const isMac = OS === 'macos';
-  const installerFile = isMac ? 'install-jev-macos.sh' : 'install-jev-windows.bat';
+  const installerFile = isMac ? 'install-jev-macos.zip' : 'install-jev-windows.bat';
   
   status.textContent = '准备下载一键安装脚本...';
   
@@ -942,7 +954,7 @@ function downloadInstaller() {
   a.click();
   
   if (isMac) {
-    status.innerHTML = `✅ 下载已开始：${installerFile}<br>下载后打开「终端」执行：<code>bash ~/Downloads/${installerFile}</code>；装好后双击「启动判分服务.command」保持窗口打开。`;
+    status.innerHTML = `✅ 下载已开始：${installerFile}<br>用法：解压后<b>右键点「install-jev-macos.command」→ 打开</b>（首次会确认一次），会自动弹出终端完成安装。<br>如果卡住，改用最稳的一行命令——打开「终端」粘贴：<code>curl -fsSL https://genuineedu.pages.dev/install-jev-macos.sh | bash</code>`;
   } else {
     status.innerHTML = `✅ 下载已开始：${installerFile}<br>下载后双击运行（浏览器若提示"不常下载的文件"，请选择保留）；装好后双击桌面「JEV本地判分服务」保持窗口打开。`;
   }
