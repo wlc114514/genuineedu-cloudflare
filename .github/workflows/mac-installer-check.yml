@@ -1,0 +1,91 @@
+name: mac-installer-check
+
+# 为什么存在：mac 用户双击安装包最近翻过的车——
+#   1) zip 用 Windows 标记打包（create_system=0）→ macOS 解压时会丢掉「可执行位」
+#      → 双击报「无法执行，因为您没有正确的访问权限」（信任文件也救不了）
+#   2) 脚本语法错误，或线上文件与仓库不一致
+# 本工作流每次改动安装包时，在真 macOS 虚拟机（GitHub Actions）上把这两类问题自动拦住。
+
+on:
+  push:
+    paths:
+      - 'install-jev-macos.zip'
+      - 'install-jev-macos.sh'
+      - '.github/workflows/mac-installer-check.yml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 检查仓库内安装包（属性 + 两种解压方式的执行权限 + 语法）
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          cp "$GITHUB_WORKSPACE/install-jev-macos.zip" repo.zip
+          cp "$GITHUB_WORKSPACE/install-jev-macos.sh" repo.sh
+
+          python3 - << 'PYEOF'
+          import zipfile
+          z = zipfile.ZipFile('repo.zip')
+          names = z.namelist()
+          assert 'install-jev-macos.command' in names, f'zip 缺少 install-jev-macos.command: {names}'
+          assert '使用说明.txt' in names, f'zip 缺少 使用说明.txt: {names}'
+          cmd = z.getinfo('install-jev-macos.command')
+          mode = (cmd.external_attr >> 16) & 0xFFFF
+          assert cmd.create_system == 3, f'create_system={cmd.create_system}，必须是 3（Unix）——否则 macOS 解压会丢掉执行权限'
+          assert mode == 0o100755, f'.command 权限={oct(mode)}，应为 0o100755'
+          txt = z.read('使用说明.txt').decode('utf-8')
+          assert 'chmod +x' in txt, '使用说明.txt 缺少「没有正确的访问权限」的修复指引'
+          head = z.read('install-jev-macos.command').decode('utf-8').splitlines()[0]
+          assert head.startswith('#!'), f'.command 首行应为 shebang，实际: {head}'
+          print('zip 属性检查 ✓（create_system=3 / 755 / 说明书含修复指引）')
+          PYEOF
+
+          rm -rf d1 d2 && mkdir d1 d2
+          ditto -x -k repo.zip d1
+          unzip -q -o repo.zip -d d2
+          for d in d1 d2; do
+            f="$d/install-jev-macos.command"
+            test -f "$f"
+            [ -x "$f" ] || { echo "::error::$d 解压后丢失执行权限（双击会报「没有正确的访问权限」）"; exit 1; }
+            echo "$d 解压后保留执行权限 ✓"
+          done
+          bash -n d1/install-jev-macos.command && echo "仓库 .command 语法 ✓"
+          bash -n repo.sh && echo "仓库 .sh 语法 ✓"
+
+      - name: 检查线上安装包（用户实际拿到的东西）
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          curl -fsSL "https://genuineedu.pages.dev/install-jev-macos.zip" -o live.zip
+          curl -fsSL "https://genuineedu.pages.dev/install-jev-macos.sh" -o live.sh
+
+          python3 - << 'PYEOF'
+          import zipfile
+          z = zipfile.ZipFile('live.zip')
+          cmd = z.getinfo('install-jev-macos.command')
+          assert cmd.create_system == 3, '线上 zip create_system 不是 3（Unix）'
+          assert ((cmd.external_attr >> 16) & 0xFFFF) == 0o100755, '线上 zip .command 权限不是 755'
+          print('线上 zip 属性检查 ✓')
+          PYEOF
+
+          rm -rf L && mkdir L
+          ditto -x -k live.zip L
+          [ -x "L/install-jev-macos.command" ] || { echo "::error::线上 zip 解压后丢失执行权限"; exit 1; }
+          bash -n L/install-jev-macos.command && echo "线上 .command 语法 ✓"
+          bash -n live.sh && echo "线上 .sh 语法 ✓"
+
+          if cmp -s live.zip "$GITHUB_WORKSPACE/install-jev-macos.zip"; then
+            echo "线上 zip 与仓库一致 ✓"
+          else
+            echo "::warning::线上 zip 与仓库不一致（可能只是还没部署）"
+          fi
+          if cmp -s live.sh "$GITHUB_WORKSPACE/install-jev-macos.sh"; then
+            echo "线上 .sh 与仓库一致 ✓"
+          else
+            echo "::warning::线上 .sh 与仓库不一致（可能只是还没部署）"
+          fi
