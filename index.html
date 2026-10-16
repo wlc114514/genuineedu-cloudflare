@@ -3,257 +3,177 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
   <title>单词拼写测试</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b91c1c'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='white' font-family='Georgia,serif' font-weight='700'%3EW%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header>
-  <div class="container">
-    <h1>单词拼写测试</h1>
-    <div class="student-badge">
-      学生：<strong id="header-student">—</strong>
-      <span id="jev-badge" style="margin-left: 1rem; font-size: 0.85em; color: var(--text-ghost, #6b7280);">本地判分服务：检测中…</span>
-      <button id="jev-start-btn" onclick="jevStart()" style="display:none; margin-left: 0.5rem; font-size: 0.8em; padding: 0.15rem 0.7rem; cursor: pointer; border: 1px solid var(--border, #9ca3af); border-radius: 4px; background: transparent; color: inherit;">启动判分服务</button>
-      <button id="jev-stop-btn" onclick="jevStop()" style="display:none; margin-left: 0.5rem; font-size: 0.8em; padding: 0.15rem 0.7rem; cursor: pointer; border: 1px solid var(--border, #9ca3af); border-radius: 4px; background: transparent; color: inherit;">停止</button>
-      <span id="jev-mac-hint" style="display:none; margin-left: 0.6rem; font-size: 0.78em; opacity: 0.85;">macOS：打开「访达」→ 按 ⌘⇧G → 输入 ~/Library/Application Support/JEV/ → 双击「启动判分服务.command」启动／「停止判分服务.command」停止</span>
-    </div>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#library" data-view-link="library">
+      <span class="brand-mark" aria-hidden="true">W</span>
+      <span class="brand-name">单词拼写测试</span>
+    </a>
+    <nav class="tabs" aria-label="主导航">
+      <button type="button" data-view="library" aria-current="page">词库</button>
+      <button type="button" data-view="test">测试</button>
+      <button type="button" data-view="records">记录</button>
+    </nav>
+    <button type="button" class="jev-chip" id="jev-chip" aria-haspopup="dialog" data-state="unknown">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="jev-chip-label">智能判分</span>
+      <span class="jev-chip-state" id="jev-chip-state">未开启</span>
+    </button>
   </div>
 </header>
 
-<nav class="tabs">
-  <button class="active" data-tab="library">词库</button>
-  <button data-tab="test">测试</button>
-  <button data-tab="results">结果</button>
-  <button data-tab="download">下载 JEV</button>
-</nav>
+<main class="wrap">
 
-<main class="container">
-  
-  <!-- 词库页 -->
-  <div id="library" class="tab-content active">
-    <div class="article-card">
-      <h2>导入词库</h2>
-      <p class="hint">每行一个单词，格式：单词 + 词性 + 中文释义。词性支持英文缩写（v. / n. / adj.）或中文（动词/名词），支持复合词性（v&n）。分隔方式：Tab（Excel 直接复制）、空格、或分号。</p>
-      
-      <label>
-        <span>词库名称</span>
-        <input type="text" id="lib-name" placeholder="例如：托福词汇 Unit 1">
-      </label>
-      
-      <label>
-        <span>粘贴单词表</span>
-        <textarea id="word-input" placeholder="mark	v&n.	标志、标记	n.	目标"></textarea>
-      </label>
-      
-      <div class="actions">
-        <button class="primary" onclick="parseAndImport()">解析并导入</button>
-      </div>
-      
-      <div id="preview" class="preview" style="display:none;">
-        <h3>预览解析结果</h3>
-        <div id="preview-content"></div>
-      </div>
-    </div>
-    
-    <div class="article-card">
-      <h2>已保存词库</h2>
-      <table id="lib-table">
-        <thead>
-          <tr>
-            <th>词库名称</th>
-            <th>词数</th>
-            <th>创建时间</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      <div class="actions">
-        <button onclick="exportAllTxt()">导出全部 TXT</button>
-        <button onclick="exportAllCsv()">导出全部 CSV</button>
-      </div>
-    </div>
-  </div>
-  
-  <!-- 测试页 -->
-  <div id="test" class="tab-content">
-    <div class="test-config">
-      <div class="test-form">
-        <h2>配置测试</h2>
-        
-        <label>
-          <span>选择词库</span>
-          <select id="test-library"></select>
+  <!-- ============ 词库 ============ -->
+  <section class="view" id="view-library" data-view-panel="library">
+    <div class="grid-2">
+      <div class="card">
+        <h2>导入词库</h2>
+        <p class="muted">每行一个单词：<b>单词 词性 释义</b>，可以有多个词性。直接从 Excel 复制、用 Tab / 分号 / 空格分隔都行。</p>
+        <label class="field">
+          <span>词库名称</span>
+          <input type="text" id="lib-name" maxlength="60" placeholder="例如：核心词汇 Unit 3" autocomplete="off">
         </label>
-        
-        <label>
-          <span>学生姓名</span>
-          <input type="text" id="test-student" placeholder="请输入学生姓名">
+        <label class="field">
+          <span>单词表</span>
+          <textarea id="lib-text" rows="10" spellcheck="false" placeholder="mark	v&n.	标志、标记	n.	目标&#10;unify v. 统一&#10;plus conj. 加 adv. 此外"></textarea>
         </label>
-        
-        <label>
-          <span>抽取单词数量（1–1000）</span>
-          <input type="number" id="test-count" value="20" min="1" max="1000">
-        </label>
-        
-        <div class="checkbox">
-          <input type="checkbox" id="test-all">
-          <span>全部单词</span>
+        <div class="parse-status" id="parse-status" aria-live="polite"></div>
+        <div class="row-actions">
+          <button type="button" class="btn primary" id="lib-save" disabled>保存词库</button>
         </div>
-        
-        <label>
-          <span>拼写提示策略</span>
-          <select id="test-hint">
-            <option value="auto">自动：展示不超过字母数一半</option>
-            <option value="first">只展示首字母</option>
-            <option value="none">不展示字母（纯听写）</option>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>我的词库</h2>
+          <div class="row-actions compact">
+            <button type="button" class="btn ghost small" data-action="export-txt">导出 TXT</button>
+            <button type="button" class="btn ghost small" data-action="export-csv">导出 CSV</button>
+          </div>
+        </div>
+        <ul class="lib-list" id="lib-list"></ul>
+        <p class="muted small">数据只保存在这个浏览器里，换浏览器或清理数据会丢失，记得偶尔导出备份。</p>
+      </div>
+    </div>
+    <div class="card" id="lib-preview" hidden></div>
+  </section>
+
+  <!-- ============ 测试 ============ -->
+  <section class="view" id="view-test" data-view-panel="test" hidden>
+    <form class="card setup" id="test-setup" autocomplete="off">
+      <h2>开始测试</h2>
+      <div class="setup-grid">
+        <label class="field span-2">
+          <span>词库</span>
+          <select id="t-lib" required></select>
+        </label>
+        <label class="field">
+          <span>学生姓名</span>
+          <input type="text" id="t-student" maxlength="30" placeholder="姓名" required>
+        </label>
+        <div class="field">
+          <span>题量</span>
+          <div class="inline">
+            <input type="number" id="t-count" min="1" max="1000" value="20" inputmode="numeric">
+            <label class="check"><input type="checkbox" id="t-all"> 全部</label>
+          </div>
+        </div>
+        <label class="field">
+          <span>题面</span>
+          <select id="t-display">
+            <option value="random">给一个词性的释义，写出其余词性</option>
+            <option value="all">给全部释义，只考拼写</option>
           </select>
         </label>
-        
-        <label>
-          <span>释义批改匹配</span>
-          <select id="test-match">
-            <option value="loose">宽松：释义包含关键内容即可</option>
-            <option value="strict">严格：必须与词表完全一致</option>
+        <label class="field">
+          <span>拼写提示</span>
+          <select id="t-hint">
+            <option value="auto">露出前一半字母</option>
+            <option value="first">只露首字母</option>
+            <option value="none">不提示（纯听写）</option>
           </select>
         </label>
-        
-        <label>
+        <label class="field">
           <span>判错标准</span>
-          <select id="test-criteria">
-            <option value="any">拼写或任一释义错 → 记入错词</option>
-            <option value="spelling">仅拼写错误 → 记入错词</option>
+          <select id="t-criteria">
+            <option value="any">拼写或释义错都算错</option>
+            <option value="spelling">只看拼写</option>
           </select>
         </label>
-        
-        <label>
-          <span>每题答题限时</span>
-          <select id="test-timeout">
+        <label class="field">
+          <span>释义匹配</span>
+          <select id="t-match">
+            <option value="loose">宽松：包含关键词即可</option>
+            <option value="strict">严格：和词表一字不差</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>每题限时</span>
+          <select id="t-timeout">
             <option value="0">不限时</option>
-            <option value="1">1 秒</option>
-            <option value="2">2 秒</option>
-            <option value="3">3 秒</option>
             <option value="5">5 秒</option>
             <option value="10">10 秒</option>
+            <option value="20">20 秒</option>
+            <option value="30">30 秒</option>
+            <option value="60">60 秒</option>
           </select>
         </label>
-        
-        <label>
-          <span>词性释义显示</span>
-          <select id="test-display">
-            <option value="random">随机显示一个词性 + 释义</option>
-            <option value="all">全部显示（只考拼写）</option>
-          </select>
-        </label>
-        
-        <div class="checkbox">
-          <input type="checkbox" id="test-inflection">
-          <span>开启扩展词测试（名词→复数；动词→过去式/分词/三单等）</span>
-        </div>
-        
-        <div class="actions">
-          <button class="primary" onclick="startTest()">开始测试</button>
-        </div>
       </div>
-      
-      <div class="test-preview">
-        <p>配置完成后开始测试</p>
+      <div class="setup-foot">
+        <p class="muted small" id="t-jev-note"></p>
+        <button type="submit" class="btn primary large" id="t-start">开始测试</button>
       </div>
-    </div>
-    
-    <!-- 测试界面 -->
-    <div id="test-ui" class="test-active" style="display:none;"></div>
-  </div>
-  
-  <!-- 结果页 -->
-  <div id="results" class="tab-content">
-    <div class="article-card">
-      <h2>测试记录</h2>
-      <div id="records-list"></div>
-    </div>
-  </div>
-  
-  <!-- JEV 下载页 -->
-  <div id="download" class="tab-content">
-    <div class="article-card">
-      <h2>本地判分服务（可选安装）</h2>
-      <p class="hint">装好后，网页版的释义判分会调用本机的 JEV 模型来判断「意思是否接近」——比文字匹配更聪明，比如把「令人难堪的」判为「尴尬的」的正确答案。不装也能正常答题（退化为文字匹配）。</p>
-      <p style="margin-bottom: 1.5rem; color: var(--paper-dim);">当前状态：<span id="jev-status-download" style="color: var(--text-ghost, #6b7280);">检测中…</span></p>
-      
-      <div style="background: linear-gradient(135deg, rgba(220, 38, 38, 0.08), rgba(220, 38, 38, 0.02)); border: 1px solid rgba(220, 38, 38, 0.2); border-radius: 12px; padding: 2rem; margin-bottom: 3rem;">
-        <h3 style="margin-top: 0; color: var(--academic-red);">🚀 一键安装（推荐）</h3>
-        <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">自动下载 llama-server 与 JEV 模型（约 520MB）并创建启动脚本，无需手动解压和移动文件。你的系统：<span id="detected-os" style="color: var(--academic-red); font-weight: 600;"></span></p>
-        <div class="actions">
-          <button class="primary" onclick="downloadInstaller()" style="font-size: 1.1rem; padding: 1rem 2rem;">
-            下载一键安装脚本 <span id="installer-ext">(.bat)</span>
-          </button>
-        </div>
-        <div id="installer-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
-        
-        <details style="margin-top: 1.5rem; color: var(--paper-dim);">
-          <summary style="cursor: pointer; user-select: none; font-weight: 600;">使用说明</summary>
-          <ul style="margin-top: 1rem; padding-left: 1.5rem; line-height: 1.8;">
-            <li><strong>Windows：</strong>下载后<strong>双击运行</strong> install-jev-windows.bat，等它跑完（自动下载约 520MB，可断点续传）。安装到系统应用目录，<strong>无窗口、桌面不留图标</strong></li>
-            <li><strong>自动联动：</strong>打开本网页会<strong>自动在后台启动</strong>判分服务（几秒就绪）；关闭网页约 1 分钟后<strong>自动停止</strong>、释放内存——日常使用完全不用管它</li>
-            <li><strong>托盘图标：</strong>托盘区 JEV 管家图标（绿=运行中 / 灰=已停止）——右键可手动<strong>启动/停止</strong>服务、打开本网站、退出托盘</li>
-            <li><strong>macOS（方式 A，最稳）：</strong>打开<strong>「终端」</strong>（聚焦搜索里搜 Terminal），粘贴下面这一行、按回车，会自动完成安装：<br><code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.5rem; border-radius: 4px;">curl -fsSL https://genuineedu.pages.dev/install-jev-macos.sh | bash</code> <button onclick="copyMacCmd(this)" style="margin-left: 0.3rem; font-size: 0.85em; padding: 0.1rem 0.5rem; cursor: pointer; border: 1px solid var(--border, #9ca3af); border-radius: 4px; background: transparent; color: inherit;">复制</button></li>
-            <li><strong>macOS（方式 B，自动开终端）：</strong><a href="install-jev-macos.zip" download>下载双击安装包</a> → 解压后<strong>右键点「install-jev-macos.command」→ 打开</strong>（首次确认一次）→ 会自动弹出终端完成安装</li>
-            <li>mac 装好后：双击安装目录里的<strong>「启动判分服务.command」</strong>启动、<strong>「停止判分服务.command」</strong>停止（mac 无自动联动，关网页不会自动停）</li>
-            <li>Windows 若没自动起来（比如管家被退出过）：点顶部<strong>「启动判分服务」按钮</strong>兜底；运行中点<strong>「停止」</strong>可立刻关闭</li>
-            <li>不装服务也能答题（退化为文字匹配）；若浏览器询问「是否允许访问本地网络/设备」，请点击<strong>允许</strong></li>
-            <li><strong>mac 提示 command not found / 无法打开？</strong>.sh 文件<strong>不能双击</strong>（双击只会用文本编辑器打开）；方式 B 的 .command 若提示「无法验证开发者」，请<strong>右键 → 打开 → 再点「打开」</strong>；若提示「<strong>没有正确的访问权限</strong>」：打开「终端」→ 输入 <code>chmod +x </code>（带空格）→ 把 .command 拖进终端 → 回车，再双击即可（旧版安装包才需要，新版已修复）；实在不行就用方式 A 一行命令</li>
-          </ul>
-        </details>
-      </div>
-      
-      <details style="margin-bottom: 2rem;">
-        <summary style="cursor: pointer; user-select: none; font-weight: 600; color: var(--paper-dim);">手动安装（高级用户）</summary>
-        
-        <div style="margin-top: 2rem;">
-          <h3>1. 下载 llama-server</h3>
-          <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">llama.cpp 官方 b8944 版（Windows：win-cpu-x64.zip 约 16MB；macOS：arm64/x64 tar.gz 约 8MB），解压后放入 jev\llama\ 目录。</p>
-          <div class="actions">
-            <button class="primary" id="download-llama-btn" onclick="downloadLlamaCpp()">
-              下载 llama-server
-            </button>
-          </div>
-          <div id="llama-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
-        </div>
-        
-        <div style="margin-top: 3rem;">
-          <h3>2. 下载 JEV 模型</h3>
-          <p style="color: var(--paper-dim); margin-bottom: 1.5rem;">Jev-Style-0.8B-Decision-v3（Qwen3.5-0.8B 底座，19+ 语言含中文），GGUF Q4_K_M 量化，约 529MB。</p>
-          <div class="actions">
-            <button class="primary" onclick="downloadJevModel()">
-              下载 Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf
-            </button>
-          </div>
-          <div id="jev-status" style="margin-top: 1rem; color: var(--paper-ghost); font-style: italic;"></div>
-        </div>
-      </details>
-      
-      <h3 style="margin-top: 3rem;">使用说明</h3>
-      <div style="background: rgba(249, 250, 251, 0.03); border-left: 4px solid var(--academic-red); padding: 2rem; line-height: 1.9; color: var(--paper-dim);">
-        <p style="margin-bottom: 1rem;"><strong style="color: var(--paper);">文件存放位置：</strong></p>
-        <p id="file-paths" style="font-family: var(--mono); margin-bottom: 1.5rem;"></p>
-        
-        <p style="margin-bottom: 1rem;"><strong style="color: var(--paper);">启动命令：</strong></p>
-        <p id="run-command" style="font-family: var(--mono); margin-bottom: 1.5rem;"></p>
-        
-        <p style="margin-bottom: 1rem;"><strong style="color: var(--paper);">判分阈值：</strong></p>
-        <p>置信度 ≥0.9 判定为接近（可在 dictation_judge.json 配置），模型常驻内存约 1GB，单次判定约 330ms。</p>
-      </div>
-    </div>
-  </div>
+    </form>
 
+    <div class="runner" id="runner" hidden>
+      <div class="runner-head">
+        <div class="progress"><div class="progress-bar" id="r-bar"></div></div>
+        <div class="runner-meta">
+          <span id="r-count">1 / 20</span>
+          <span class="timer" id="r-timer" hidden></span>
+          <button type="button" class="link" id="r-quit">结束测试</button>
+        </div>
+      </div>
+      <div class="card question" id="r-card"></div>
+    </div>
+  </section>
+
+  <!-- ============ 记录 ============ -->
+  <section class="view" id="view-records" data-view-panel="records" hidden>
+    <div class="card-head">
+      <h2>测试记录</h2>
+      <label class="field inline-field">
+        <span>学生</span>
+        <select id="rec-student"><option value="">全部</option></select>
+      </label>
+    </div>
+    <div id="rec-list"></div>
+  </section>
 </main>
 
-<footer>
-  <p>使用流程：词库页粘贴单词表 → 测试页选择词库、设置参数 → 答题 → 查看结果与错词</p>
-  <p>所有数据保存在浏览器 localStorage，不会上传；换浏览器或清除数据会丢失，请定期导出备份。</p>
+<footer class="wrap foot">
+  <p>词库和成绩只存在本机浏览器，不会上传。智能判分在你自己的电脑上运行，答案也不会离开这台电脑。</p>
 </footer>
 
-<script src="app.js"></script>
+<!-- ============ 智能判分面板 ============ -->
+<dialog class="sheet" id="jev-dialog" aria-labelledby="jev-title">
+  <form method="dialog" class="sheet-close"><button class="icon-btn" aria-label="关闭">×</button></form>
+  <h2 id="jev-title">智能判分</h2>
+  <div id="jev-body"></div>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script src="js/core.js"></script>
+<script src="js/jev.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

@@ -1,85 +1,30 @@
-# Cloudflare Pages 部署指南
+# 部署（Cloudflare Pages）
 
-## 快速部署步骤
+纯静态，不需要构建命令。
 
-### 1. 推送到 GitHub
+## 方式一：连 GitHub 自动部署
 
-```bash
-# 在项目目录下
-git remote add origin https://github.com/你的用户名/genuineedu-web.git
-git branch -M main
-git push -u origin main
-```
+Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git → 选本仓库：
 
-### 2. 连接 Cloudflare Pages
+- Framework preset：None
+- Build command：留空
+- Build output directory：`/`
 
-1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. 左侧菜单：**Workers & Pages** → **Create application** → **Pages** → **Connect to Git**
-3. 授权 GitHub 并选择 `genuineedu-web` 仓库
-4. 构建设置：
-   - **Project name**: `genuineedu-web`（或自定义）
-   - **Production branch**: `main`
-   - **Framework preset**: `None`
-   - **Build command**: 留空
-   - **Build output directory**: `/`
-5. 点击 **Save and Deploy**
+之后每次 push 到 main 自动部署。`_headers` 会让 `/jev/` 下的脚本以 UTF-8 文本返回、不缓存。
 
-### 3. 等待部署完成
-
-- 首次部署约 1-2 分钟
-- 部署成功后获得地址：`https://genuineedu-web.pages.dev`
-- 可以绑定自定义域名（Cloudflare Pages 设置中配置）
-
-## 更新部署
-
-每次推送到 `main` 分支，Cloudflare Pages 会自动重新部署：
+## 方式二：wrangler 直传
 
 ```bash
-git add .
-git commit -m "更新功能"
-git push
+npm run dist                                   # 只把网站文件拷到 dist/（不含 node_modules、测试缓存）
+npx wrangler pages deploy dist --project-name genuineedu
 ```
 
-## 自定义域名（可选）
+不要直接 `wrangler pages deploy .`：仓库根目录里有 node_modules 和测试用的 500MB 模型缓存。
 
-1. Cloudflare Pages 项目页 → **Custom domains** → **Set up a custom domain**
-2. 输入域名（如 `vocab.example.com`）
-3. 按提示添加 DNS 记录（CNAME 指向 `genuineedu-web.pages.dev`）
-4. 等待 SSL 证书自动配置完成
+## 换域名时
 
-## 本地测试
+安装器会记住「从哪个网站下载的」并把它加进本机服务的白名单，所以换域名后用户在新域名上重新运行一次安装器即可
+（不会重复下载模型）。默认白名单：`https://genuineedu.pages.dev`、`https://*.genuineedu.pages.dev`（预览部署）、`localhost`。
 
-```bash
-python -m http.server 8080
-# 访问 http://localhost:8080
-```
-
-## 费用
-
-- Cloudflare Pages **完全免费**
-- 免费额度：
-  - 无限请求
-  - 每月 500 次构建
-  - 20,000 个文件，总大小 25 MB（本项目远低于此限制）
-
-## 故障排查
-
-### 部署失败
-
-- 确认仓库中有 `index.html`、`style.css`、`app.js`
-- 构建命令和输出目录留空或设为 `/`
-
-### 页面空白
-
-- 打开浏览器开发者工具（F12）查看 Console 错误
-- 确认 localStorage 未被禁用
-
-### 数据丢失
-
-- localStorage 数据在清除浏览器缓存时会丢失
-- 定期使用"导出全部"功能备份词库
-
-## 技术支持
-
-- Cloudflare Pages 文档：https://developers.cloudflare.com/pages/
-- GitHub 帮助：https://docs.github.com/
+静态的 `install-jev-windows.bat` 里写死的是 `https://genuineedu.pages.dev`；网页上点「下载安装器」时会按当前网址现场生成，不受影响。
+改了 `jev/windows/install-jev.bat.tpl` 记得运行 `node tools/build.mjs`（`npm test` 会检查两者是否一致）。

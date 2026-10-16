@@ -1,0 +1,12 @@
+# Cloudflare Pages 响应头
+# /jev/ 下都是安装器和服务脚本（文本）；不缓存，改了马上生效
+/jev/*
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: no-cache
+/install-jev-*
+  Cache-Control: no-cache
+/js/*
+  Cache-Control: no-cache
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
