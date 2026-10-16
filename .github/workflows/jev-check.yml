@@ -1,0 +1,102 @@
+name: jev-check
+
+# 本地判分服务的三端真机检查（GitHub 提供的 macOS / Linux / Windows 虚拟机）：
+#   真实下载 llama-server 与模型 → 安装 → 通过 jev:// 协议唤起 → 跑管家端到端测试 → 卸载
+# 本地开发时同样的测试可以手动跑，见 README「测试」一节。
+
+on:
+  push:
+    paths: ['jev/**', 'js/**', 'tests/**', 'tools/**', 'install-jev-*', '.github/workflows/jev-check.yml']
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node --test tests/core.test.js tests/jev-client.test.js
+      - run: node tools/build.mjs --check
+      - run: bash -n jev/unix/install.sh && bash -n install-jev-macos.sh && perl -c jev/unix/agent.pl
+
+  unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, macos-13, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: 准备环境变量
+        run: |
+          case "$(uname -s)/$(uname -m)" in
+            Darwin/arm64) a=macos-arm64 ;; Darwin/x86_64) a=macos-x64 ;; *) a=ubuntu-x64 ;;
+          esac
+          {
+            echo "JEV_INSTALL_DIR=$RUNNER_TEMP/jev-install"
+            echo "JEV_LLAMA_URL=https://github.com/ggml-org/llama.cpp/releases/download/b8944/llama-b8944-bin-$a.tar.gz"
+            echo "JEV_MODEL_URL=https://huggingface.co/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF/resolve/main/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf"
+            [ "$(uname -s)" = Linux ] && echo "JEV_NO_REGISTER=1"
+          } >> "$GITHUB_ENV"
+      - name: 安装（仓库里的脚本，下载用官方源）
+        run: bash jev/unix/install.sh
+      - name: 通过 jev:// 唤起（macOS，走真实的协议处理程序）
+        if: runner.os == 'macOS'
+        run: |
+          perl "$JEV_INSTALL_DIR/agent.pl" stop
+          open "jev://start"
+          for i in $(seq 1 90); do
+            curl -s -m 2 http://127.0.0.1:8002/status | grep -q '"state":"ready"' && { echo "唤起成功"; exit 0; }
+            sleep 1
+          done
+          echo "::error::jev:// 没能唤起服务"; cat "$JEV_INSTALL_DIR/agent.log" || true; exit 1
+      - name: 重复安装应全部跳过下载
+        run: |
+          JEV_NO_START=1 bash jev/unix/install.sh | tee out.txt
+          if grep -q '下载中（线路' out.txt; then echo "::error::重复安装又下载了"; exit 1; fi
+      - name: 管家端到端测试
+        run: |
+          perl "$JEV_INSTALL_DIR/agent.pl" stop
+          node tests/agent.test.mjs perl "$JEV_INSTALL_DIR"
+      - name: 卸载
+        run: |
+          bash "$JEV_INSTALL_DIR/uninstall.sh"
+          test ! -e "$JEV_INSTALL_DIR/jev"
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: 安装（jevtest:// 协议名）
+        shell: pwsh   # 故意从 PowerShell 7 启动：安装器必须扛住继承来的 PSModulePath
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'jev-install'
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File jev/windows/install.ps1 -InstallDir $dir -Scheme jevtest `
+            -LlamaUrls https://github.com/ggml-org/llama.cpp/releases/download/b8944/llama-b8944-bin-win-cpu-x64.zip `
+            -ModelUrls https://huggingface.co/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF/resolve/main/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: 通过 jevtest:// 唤起
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'jev-install'
+          powershell.exe -NoProfile -File "$dir/agent.ps1" stop
+          Start-Process 'jevtest://start/'
+          for ($i = 0; $i -lt 90; $i++) {
+            try { if ((Invoke-RestMethod http://127.0.0.1:8002/status -TimeoutSec 2).state -eq 'ready') { 'ok'; exit 0 } } catch { }
+            Start-Sleep 1
+          }
+          Get-Content "$dir/agent.log"; exit 1
+      - name: 管家端到端测试
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP 'jev-install'
+          powershell.exe -NoProfile -File "$dir/agent.ps1" stop
+          node tests/agent.test.mjs windows $dir

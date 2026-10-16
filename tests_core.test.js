@@ -1,2 +1,0 @@
-const assert=require('assert'),fs=require('fs'),vm=require('vm'),path=require('path');const context={window:{}};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'core.js'),'utf8'),context);const c=context.window.GenuineEduCore;const w=c.parseWordList('mark\tv&n.\t标志、标记\tn.\t目标\nblossom  v  开花');assert.equal(w.length,2);assert.equal(w[0].senses[1].pos,'n');assert(c.meaningsMatch(w[0],'标记',{match:'loose'}));assert.equal(c.escapeHtml('<script>'),'&lt;script&gt;');console.log('core tests passed');
-

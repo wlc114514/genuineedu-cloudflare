@@ -1,12 +1,16 @@
 {
   "name": "genuineedu-web",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "单词拼写测试网页版",
   "main": "index.html",
   "scripts": {
     "dev": "python -m http.server 8080",
-    "preview": "python -m http.server 8080",
-    "test": "node tests_core.test.js"
+    "build": "node tools/build.mjs",
+    "test": "node --test tests/core.test.js tests/jev-client.test.js && node tools/build.mjs --check",
+    "test:agent": "node tests/agent.test.mjs windows .testcache/win-inst",
+    "test:install": "node tests/install-windows.test.mjs",
+    "test:browser": "node tests/browser.test.mjs",
+    "dist": "node tools/build.mjs --dist"
   },
   "keywords": [
     "vocabulary",
@@ -14,5 +18,8 @@
     "education"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "puppeteer-core": "23.11.1"
+  }
 }

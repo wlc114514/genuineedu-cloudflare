@@ -1,65 +1,52 @@
-# GenuineEdu Web - 单词拼写测试
+# GenuineEdu · 单词拼写测试
 
-纯静态网页版本，支持词库管理、测试、结果查看。
+纯静态网页（Cloudflare Pages），词库和成绩存在浏览器 localStorage。
+可选的「智能判分」在用户自己的电脑上运行一个小模型（JEV），把「令人难堪的」这类近义写法判为「尴尬的」的正确答案。
 
-## 功能特性
+## 用户怎么用
 
-- 📚 **词库管理**：导入、查看、导出词库
-- 🎯 **灵活测试**：支持抽取数量、字母提示、释义匹配等多种配置
-- 📋 **结果统计**：正确率、用时、错词详情
-- 💾 **本地存储**：数据保存在浏览器 localStorage，不上传
+1. **词库**：粘贴单词表（Excel 直接复制 / Tab / 分号 / 空格都行），实时显示识别结果，保存。
+2. **测试**：选词库和参数，开始。题面给一个词性的释义，写出单词和其余词性的释义；或者只考拼写。全程键盘 <kbd>Enter</kbd> 操作。
+3. **记录**：正确率、用时、错词表；可以一键「重测错词」。
 
-## 部署方式
+### 智能判分（可选）
 
-### Cloudflare Pages
+右上角「智能判分」→ 按提示装一次：
 
-1. 创建 GitHub 仓库并推送代码
-2. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com)
-3. Pages → Create a project → Connect to Git
-4. 选择仓库，构建设置：
-   - **Build command**: 留空
-   - **Build output directory**: `/`
-   - **Root directory**: `/`
-5. Deploy
+- **Windows**：下载一个 .bat → 双击。不要管理员权限，不建桌面图标，「设置 → 应用」里可以卸载。
+- **macOS / Linux**：终端里粘贴一行命令。
 
-### 本地预览
+装好之后就不用管了：开始测试时网页通过 `jev://` 链接唤起服务，所有页面关掉约 10 秒后服务自己退出；空闲时模型自动休眠释放内存。不开机自启、不常驻。没装时照常使用文字匹配。
+
+## 目录
+
+```
+index.html  style.css            页面
+js/core.js                       纯逻辑：词表解析、出题、判分、JEV 概率计算（浏览器 + node 共用）
+js/jev.js                        本地服务客户端（状态机，依赖注入，可无头测试）
+js/app.js                        页面层：DOM、事件、存储
+jev/windows/                     install.ps1 安装器 · agent.ps1 管家 · launch.js 协议处理 · uninstall.ps1
+                                 install-jev.bat.tpl：网页按当前网址现场生成 .bat 的模板
+jev/unix/                        install.sh 安装器（macOS / Linux）· agent.pl 管家
+install-jev-windows.bat          由模板生成的静态版（旧链接 / 直链用），`node tools/build.mjs`
+install-jev-macos.sh             旧链接兼容，转到 jev/unix/install.sh
+tests/                           单元测试 + 管家 / 安装器 / 浏览器端到端测试
+files/                           桌面版背词工具脚本（与网页无关）
+```
+
+架构和本地服务协议见 [ARCHITECTURE.md](ARCHITECTURE.md)，部署见 [DEPLOY.md](DEPLOY.md)。
+
+## 测试
 
 ```bash
-python -m http.server 8080
-# 访问 http://localhost:8080
+npm test                                           # 单元测试（纯逻辑 + 服务客户端状态机）+ bat 模板同步检查
+node tests/agent.test.mjs windows <测试安装目录>    # 管家端到端：真实 llama-server + 模型（34 项）
+node tests/agent.test.mjs perl <测试安装目录>       # 同上，在 macOS / Linux 上跑 Perl 版管家
+node tests/install-windows.test.mjs                # Windows 安装器端到端：本地模拟镜像、真实协议唤起、卸载
+node tests/browser.test.mjs [测试安装目录]          # 无头 Chrome 跑完整用户流程；给了安装目录就连真实服务测智能判分
 ```
 
-## 使用流程
+端到端测试用 38xxx 端口和 `jevtest://` 协议名，不会碰正式安装。GitHub Actions（`.github/workflows/jev-check.yml`）
+在 macOS（Apple 芯片 + Intel）、Ubuntu、Windows 虚拟机上真实下载、安装、唤起并跑同一套管家测试。
 
-1. **词库页**：粘贴单词表（支持 Tab/空格/分号分隔）→ 解析并导入
-2. **测试页**：选择词库 → 设置参数 → 开始测试
-3. **答题**：根据释义和字母提示补全单词，填写其余释义
-4. **结果页**：查看正确率、用时、错词列表
-
-## 词表格式示例
-
-```
-mark	v&n.	标志、标记	n.	目标
-blossom	v	开花	n	花朵
-accurate	adj.	精确的
-```
-
-支持的格式：
-- **分隔符**：Tab（Excel 直接复制）、多个空格、分号
-- **词性**：v. / n. / adj. / 动词 / 名词 等
-- **复合词性**：v&n / v.&n.
-- **多个释义**：同一词性下用逗号/顿号分隔
-
-## 技术栈
-
-- 纯 HTML/CSS/JavaScript
-- localStorage 本地存储
-- 响应式设计，支持移动端
-
-## 数据安全
-
-所有数据保存在浏览器本地，不会上传到服务器。建议定期导出备份。
-
-## License
-
-MIT
+本地预览：`npm run dev` → <http://localhost:8080>（localhost 在管家的白名单里，可以直接连本机服务调试）。
