@@ -25,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, macos-13, ubuntu-latest]
+        os: [macos-latest, macos-15-intel, ubuntu-latest]   # Apple 芯片 / Intel / Linux
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
@@ -41,7 +41,7 @@ jobs:
             echo "JEV_INSTALL_DIR=$RUNNER_TEMP/jev-install"
             echo "JEV_LLAMA_URL=https://github.com/ggml-org/llama.cpp/releases/download/b8944/llama-b8944-bin-$a.tar.gz"
             echo "JEV_MODEL_URL=https://huggingface.co/chaoliangUNSW/Jev-Style-0.8B-Decision-v3-GGUF/resolve/main/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf"
-            [ "$(uname -s)" = Linux ] && echo "JEV_NO_REGISTER=1"
+            if [ "$(uname -s)" = Linux ]; then echo "JEV_NO_REGISTER=1"; fi   # 不能写成 [ ] && …：bash -e 下条件为假会让整步失败
           } >> "$GITHUB_ENV"
       - name: 安装（仓库里的脚本，下载用官方源）
         run: bash jev/unix/install.sh
