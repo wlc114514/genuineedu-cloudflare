@@ -1,6 +1,7 @@
 // 数据结构
-let libraries = JSON.parse(localStorage.getItem('libraries') || '{}');
-let testRecords = JSON.parse(localStorage.getItem('testRecords') || '[]');
+const Core = window.GenuineEduCore;
+let libraries = Core.readJson(localStorage, 'libraries', {});
+let testRecords = Core.readJson(localStorage, 'testRecords', []);
 let currentTest = null;
 
 // 系统检测
@@ -308,41 +309,7 @@ function parseAndImport() {
   document.getElementById('word-input').value = '';
 }
 
-function parseWordList(text) {
-  const lines = text.split('\n').filter(l => l.trim());
-  const words = [];
-  
-  for (const line of lines) {
-    const parts = line.split(/[\t;]|[ ]{2,}/).map(p => p.trim()).filter(p => p);
-    
-    if (parts.length < 3) continue;
-    
-    const word = parts[0];
-    const senses = [];
-    
-    let i = 1;
-    while (i < parts.length) {
-      const pos = normalizePos(parts[i]);
-      const meanings = [];
-      
-      i++;
-      while (i < parts.length && !isPos(parts[i])) {
-        meanings.push(parts[i]);
-        i++;
-      }
-      
-      if (meanings.length > 0) {
-        senses.push({ pos, meanings: meanings.join('；') });
-      }
-    }
-    
-    if (senses.length > 0) {
-      words.push({ word, senses });
-    }
-  }
-  
-  return words;
-}
+function parseWordList(text) { return Core.parseWordList(text); }
 
 function isPos(str) {
   return /^(v\.?|n\.?|adj\.?|adv\.?|prep\.?|conj\.?|pron\.?|interj\.?|动词|名词|形容词|副词|介词|连词|代词|感叹词|v&n\.?|n&v\.?)$/i.test(str);
@@ -626,6 +593,8 @@ function startTimer(seconds) {
 }
 
 async function submitAnswer(isTimeout = false) {
+  if (!currentTest || currentTest.submitting) return;
+  currentTest.submitting = true;
   if (timerInterval) {
     clearInterval(timerInterval);
     timerInterval = null;
@@ -677,17 +646,7 @@ async function submitAnswer(isTimeout = false) {
   renderFeedback(word, spelling, meanings, correct, isTimeout, judgeP);
 }
 
-function meaningsMatch(word, meanings, config) {
-  if (!meanings) return false;
-  if (config.match === 'loose') {
-    const userKeywords = extractKeywords(meanings);
-    const correctKeywords = word.senses.flatMap(s => extractKeywords(s.meanings));
-    return userKeywords.some(uk => correctKeywords.includes(uk));
-  }
-  const normalized = meanings.replace(/[；，、]/g, ';').toLowerCase();
-  const correctMeanings = word.senses.flatMap(s => s.meanings.split(/[；，、;]/).map(m => m.trim().toLowerCase()));
-  return correctMeanings.some(cm => normalized.includes(cm));
-}
+function meaningsMatch(word, meanings, config) { return Core.meaningsMatch(word, meanings, config); }
 
 function isBlankText(s) {
   return !/[0-9A-Za-z\u4e00-\u9fff]/.test(s || '');
@@ -744,6 +703,8 @@ function renderFeedback(word, spelling, meanings, correct, isTimeout, judgeP = n
 }
 
 function nextQuestion() {
+  if (!currentTest || currentTest.answers.length <= currentTest.current) return;
+  currentTest.submitting = false;
   currentTest.current++;
   
   if (currentTest.current >= currentTest.words.length) {

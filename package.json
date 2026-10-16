@@ -5,9 +5,14 @@
   "main": "index.html",
   "scripts": {
     "dev": "python -m http.server 8080",
-    "preview": "python -m http.server 8080"
+    "preview": "python -m http.server 8080",
+    "test": "node tests_core.test.js"
   },
-  "keywords": ["vocabulary", "test", "education"],
+  "keywords": [
+    "vocabulary",
+    "test",
+    "education"
+  ],
   "author": "",
   "license": "MIT"
 }

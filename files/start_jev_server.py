@@ -11,6 +11,10 @@ import os
 import platform
 import subprocess
 from pathlib import Path
+try:
+    from jev_config import JevConfig
+except ImportError:
+    from files.jev_config import JevConfig
 
 def get_llama_server_path():
     """根据平台返回 llama-server 路径"""
@@ -45,7 +49,8 @@ def check_llama_cpp_installed():
 
 def start_server():
     script_dir = Path(__file__).parent
-    model_path = script_dir / "jev/Jev-Style-0.8B-Decision-v3-Q4_K_M.gguf"
+    config = JevConfig(script_dir)
+    model_path = config.model_path
     
     # 检查模型文件
     if not model_path.exists():
@@ -135,3 +140,5 @@ if __name__ == "__main__":
         sys.exit(show_status())
     
     sys.exit(start_server())
+
+
