@@ -1,6 +1,9 @@
 name: jev-debug
 # 临时诊断：Apple 芯片上 Metal（GPU）与纯 CPU 的判分输出对比
-on: workflow_dispatch
+on:
+  push:
+    branches: [refactor-jev-v2]
+    paths: ['.github/workflows/jev-debug.yml', 'tests/judge-probe.mjs']
 jobs:
   metal-vs-cpu:
     runs-on: macos-latest
