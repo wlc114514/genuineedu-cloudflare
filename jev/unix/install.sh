@@ -33,7 +33,7 @@ case "$OS/$ARCH" in
   Darwin/arm64)  ASSET=macos-arm64;  ASSET_SHA=814a633d50981d5319106c3cf422e2986424a68a8a2badcb6df5b4c4be3f0e2a; ASSET_SIZE=8562778 ;;
   Darwin/x86_64) ASSET=macos-x64;    ASSET_SHA=ce625613a20a7dde45fc87ce0ee45dc04a0912b36921a544f4bb8c708a8d9f7b; ASSET_SIZE=8596384 ;;
   Linux/x86_64)  ASSET=ubuntu-x64;   ASSET_SHA=198c1bb9df0da35883ab0b61e54db614749cb31fec0033be1250e4b90c8423e1; ASSET_SIZE=13914075 ;;
-  *) fail "暂不支持这个系统：$OS $ARCH。" "支持：macOS（Apple 芯片 / Intel）、64 位 Linux。" ;;
+  *) fail "暂不支持这个系统：$OS ${ARCH}。" "支持：macOS（Apple 芯片 / Intel）、64 位 Linux。" ;;
 esac
 if [ "$OS" = Darwin ]; then DEFAULT_BASE="$HOME/Library/Application Support/JEV"
 else DEFAULT_BASE="${XDG_DATA_HOME:-$HOME/.local/share}/JEV"; fi
@@ -57,7 +57,7 @@ sha256() { if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | cut -
 get_verified() {  # urls dest sha size label
   local urls=$1 dest=$2 sha=$3 size=$4 label=$5 part="$2.part" i=0 n u len host
   if [ -f "$dest" ] && [ "$(filesize "$dest")" = "$size" ]; then
-    say "校验已有的$label…"
+    say "校验已有的${label}…"
     if [ "$(sha256 "$dest")" = "$sha" ]; then ok "已存在且完整，跳过下载"; return 0; fi
     warn "已有文件损坏，重新下载"; rm -f "$dest"
   fi
@@ -65,13 +65,13 @@ get_verified() {  # urls dest sha size label
   n=$(echo $urls | wc -w | tr -d ' ')
   for u in $urls; do
     i=$((i + 1)); host=$(echo "$u" | sed -E 's#^[a-z]+://([^/]+).*#\1#')
-    say "下载中（线路 $i/$n：$host）"
+    say "下载中（线路 $i/${n}：${host}）"
     if ! curl -L --fail --retry 3 --retry-delay 2 --connect-timeout 20 -# -C - -o "$part" "$u"; then
       if ! curl -L --fail --retry 2 --connect-timeout 20 -# -o "$part" "$u"; then warn "这条线路失败，换下一条"; continue; fi
     fi
     [ -f "$part" ] || continue
     len=$(filesize "$part")
-    if [ "$len" != "$size" ]; then warn "文件大小不对（$len / $size），换下一条"; [ "$len" -gt "$size" ] && rm -f "$part"; continue; fi
+    if [ "$len" != "$size" ]; then warn "文件大小不对（$len / ${size}），换下一条"; [ "$len" -gt "$size" ] && rm -f "$part"; continue; fi
     say "校验中…"
     if [ "$(sha256 "$part")" != "$sha" ]; then warn "校验不通过（文件损坏或被篡改），换下一条"; rm -f "$part"; continue; fi
     mv -f "$part" "$dest"; ok "完成"; return 0
@@ -127,7 +127,7 @@ ok "磁盘空间够用（剩余 $((free_kb / 1024)) MB）"
 stop_everything
 ok "已停止正在运行的旧服务"
 
-step "[2/5] 推理引擎 llama-server（$LLAMA_TAG · $ASSET）"
+step "[2/5] 推理引擎 llama-server（$LLAMA_TAG · ${ASSET}）"
 if llama_current; then
   ok "已是最新，跳过"
 else
@@ -151,7 +151,7 @@ step "[4/5] 安装服务组件"
 if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/agent.pl" ]; then
   cp -f "$SCRIPT_DIR/agent.pl" "$BASE/agent.pl.new"
 else
-  curl -fsSL --retry 3 -o "$BASE/agent.pl.new" "$SOURCE/agent.pl" || fail "无法下载组件 agent.pl（$SOURCE）。"
+  curl -fsSL --retry 3 -o "$BASE/agent.pl.new" "$SOURCE/agent.pl" || fail "无法下载组件 agent.pl（${SOURCE}）。"
 fi
 grep -q 'JEV local judging agent' "$BASE/agent.pl.new" && "$PERL" -c "$BASE/agent.pl.new" >/dev/null 2>&1 \
   || { rm -f "$BASE/agent.pl.new"; fail "下载到的 agent.pl 不完整。"; }
@@ -236,5 +236,5 @@ case "$res" in
   model_missing) fail "模型文件缺失。" ;;
   llama_missing) fail "llama-server 缺失。" ;;
   port_busy) fail "本机端口被占满（8001/18001/28001）。" "关掉占用这些端口的程序后，回到网页点「启动」即可。" ;;
-  *) fail "服务没有按时启动（$res）。" "日志：$BASE/agent.log 和 $JEV_DIR/server.log" ;;
+  *) fail "服务没有按时启动（${res}）。" "日志：$BASE/agent.log 和 $JEV_DIR/server.log" ;;
 esac
