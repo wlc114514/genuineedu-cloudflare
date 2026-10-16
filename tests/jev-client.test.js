@@ -12,7 +12,7 @@ function memStorage() {
 function fakeWorld() {
   const w = {
     agentPort: null, state: 'ready', key: 'k1', version: '2.0.0', error: '',
-    launches: [], beacons: [], calls: [], llamaStatus: 200, p: { yes: -0.1, no: -3 },
+    launches: [], beacons: [], calls: [], llamaStatus: 200, completions: 0, broken: false, p: { yes: -0.1, no: -3 },
     onLaunch: null,
   };
   w.fetch = async (url, init = {}) => {
@@ -29,8 +29,13 @@ function fakeWorld() {
     if (u.pathname === '/completion') {
       if (init.headers['X-Api-Key'] !== w.key) return resp(401, {});
       if (w.llamaStatus !== 200) return resp(w.llamaStatus, {});
-      const k1 = JSON.parse(init.body).prompt.includes('不一致: 意思不同或无关 ->') && JSON.parse(init.body).prompt.split('->').length > 2;
-      const yes = k1 ? w.p.no : w.p.yes, no = k1 ? w.p.yes : w.p.no;
+      const prompt = JSON.parse(init.body).prompt;
+      w.completions++;
+      if (w.broken) return resp(200, { completion_probabilities: [{ top_logprobs: [{ id: 9542, logprob: -5 }, { id: 874, logprob: -0.1 }] }] });
+      const k1 = prompt.split('->').length > 2;
+      const unrelated = /学生写的释义：(火焰|高兴的)/.test(prompt);   // 假模型：这两个答案判「不一致」，其余判「一致」
+      const agree = k1 === unrelated;   // 第 0 问「一致吗」、第 1 问「不一致吗」
+      const yes = agree ? w.p.yes : w.p.no, no = agree ? w.p.no : w.p.yes;
       return resp(200, { completion_probabilities: [{ top_logprobs: [{ id: 9542, logprob: yes }, { id: 874, logprob: no }] }] });
     }
     throw new TypeError('Failed to fetch');
@@ -150,6 +155,37 @@ test('服务中途没了：judge 返回 null，不抛错', async () => {
   w.llamaStatus = 500;
   assert.equal(await c.judge('统一', '使一致'), null);
   assert.equal(c.state, 'offline');
+});
+
+test('模型自检：正常模型通过，判分照常', async () => {
+  const w = fakeWorld();
+  w.agentPort = 8002;
+  const c = client(w);
+  await c.probe();
+  assert.equal(await c.selfTest, true);
+  assert.ok((await c.judge('尴尬的', '令人难堪的')) > 0.9);
+  assert.ok((await c.judge('尴尬的', '高兴的')) < 0.1);
+  assert.equal(c.state, 'ready');
+});
+
+test('模型自检：输出异常（如 Apple 芯片 Metal 算错）→ 不用模型、报 self_test_failed', async () => {
+  const w = fakeWorld();
+  w.agentPort = 8002;
+  w.broken = true;
+  const c = client(w);
+  await c.probe();
+  assert.equal(await c.selfTest, false);
+  assert.equal(c.state, 'error');
+  assert.equal(c.info.error, 'self_test_failed');
+  assert.equal(await c.judge('尴尬的', '令人难堪的'), null, '退回文字匹配');
+  await c.probe();
+  assert.equal(c.state, 'error', '同一个服务再探测仍是错误，不会反复自检');
+  const n = w.completions;
+  w.key = 'k9'; w.broken = false;   // 服务重启（比如重新安装后）→ 新密钥 → 重新自检
+  await c.probe();
+  assert.equal(await c.selfTest, true);
+  assert.equal(c.state, 'ready');
+  assert.ok(w.completions > n);
 });
 
 test('未就绪时 judge 返回 null（调用方退回文字匹配）', async () => {

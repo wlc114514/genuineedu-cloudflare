@@ -60,3 +60,8 @@
 - 安装器：磁盘空间检查、SHA256 校验（损坏自动重下）、多镜像回退、断点续传（服务器不支持时从头下）、重复运行跳过已完成的步骤、清理旧版托盘脚本。
 - Windows：从 PowerShell 7 里启动时继承的 `PSModulePath` 会让 5.1 的内置命令加载失败，脚本开头先复位；本机请求一律不走代理。
 - 卸载只删安装器放进去的文件，目录里用户自己的东西保留。
+- 模型自检：每次服务（重新）启动后，网页先判两组已知答案（尴尬的/令人难堪的 必须 ≥0.9，工资/火焰 必须 <0.5）。
+  不通过 → 状态 `self_test_failed`，不用模型、退回文字匹配，绝不静默误判。
+- macOS 一律用 CPU 跑模型（`--device none`）：CI 实测 Apple 芯片上 Metal 输出全错（概率恒为 ~0.003），CPU 与 Windows/Linux 结果一致。
+  `config.json` 的 `llamaArgs` 可覆盖。诊断工具：`node tests/judge-probe.mjs <llama 地址> [密钥]`。
+- macOS 自带 bash 3.2：脚本里紧挨中文的变量必须写成 `${VAR}`（`npm test` 会检查）。

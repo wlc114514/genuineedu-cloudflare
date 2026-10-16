@@ -268,11 +268,19 @@ sub start_llama {
     open STDOUT, '>>', $slog;
     open STDERR, '>&', \*STDOUT;
     exec $LLAMA, '-m', $MODEL, '--host', '127.0.0.1', '--port', $llama_port, '-c', $cfg{ctxSize}, '--no-webui',
-      '--api-key', $key, '--sleep-idle-seconds', $cfg{sleepIdle}
+      '--api-key', $key, '--sleep-idle-seconds', $cfg{sleepIdle}, llama_device_args()
       or POSIX::_exit(127);
   }
   $llama_pid = $pid;
   logmsg("llama-server pid $pid on port $llama_port");
+}
+
+# Apple 芯片上 llama.cpp 默认用 Metal（GPU），实测这个模型在 Metal 上输出全错（判分概率恒为 ~0.003），
+# CPU 结果和 Windows/Linux 一致。0.8B 模型 CPU 判一次只要零点几秒，所以 macOS 一律用 CPU。
+# config.json 里的 llamaArgs（数组）可以覆盖。
+sub llama_device_args {
+  return @{ $cfg{llamaArgs} } if ref $cfg{llamaArgs} eq 'ARRAY';
+  return $^O eq 'darwin' ? ('--device', 'none') : ();
 }
 
 sub llama_healthy {

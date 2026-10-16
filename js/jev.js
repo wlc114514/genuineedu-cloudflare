@@ -36,6 +36,9 @@
       this.port = null;
       this.launchFailed = false;
       this.cache = new Map();
+      this.selfTest = null;            // Promise<boolean>：当前密钥对应的模型自检
+      this.checkedKey = null;
+      this.badKey = null;
       this.listeners = new Set();
       this._probing = null;
       this._starting = null;
@@ -97,7 +100,37 @@
       this.installed = true;
       this.launchFailed = false;
       if (keyChanged) this.cache.clear();
+      if (st.state === 'ready' && this.badKey === st.key) {
+        this.info = Object.assign({}, st, { state: 'error', error: 'self_test_failed' });
+        this._set('error');
+        return;
+      }
       this._set(st.state === 'ready' ? 'ready' : st.state === 'error' ? 'error' : 'starting');
+      if (st.state === 'ready' && this.checkedKey !== st.key) this._selfTest(st.key);
+    }
+
+    // 每次服务（重新）启动后先用两组已知答案自检：近义的必须判接近、无关的必须判不接近。
+    // 不对（比如 Apple 芯片上 Metal 算错）就不用模型，退回文字匹配，绝不静默误判。
+    _selfTest(key) {
+      this.checkedKey = key;
+      this.selfTest = (async () => {
+        let ok;
+        try {
+          const same = await this._judgeOnce('尴尬的', '令人难堪的');
+          const diff = await this._judgeOnce('工资', '火焰');
+          ok = same !== null && diff !== null && same >= Core.JEV.THRESHOLD && diff < 0.5;
+        } catch (_) {
+          this.checkedKey = null;     // 网络抖动：这次不下结论，下次心跳再测
+          return false;
+        }
+        if (!ok && this.info && this.info.key === key) {
+          this.badKey = key;
+          this.info = Object.assign({}, this.info, { state: 'error', error: 'self_test_failed' });
+          this._set('error');
+        }
+        return ok;
+      })();
+      return this.selfTest;
     }
 
     // 拉起服务。必须在用户点击里调用（浏览器只允许用户手势唤起 jev://）
@@ -169,6 +202,17 @@
       return Core.jevProbability(ds[0], ds[1]);
     }
 
+    // 自检通过才用模型。自检没跑完是因为网络/服务重启（不是模型坏了）时，重新问一次管家再测
+    async _verified() {
+      for (let i = 0; i < 2; i++) {
+        if (!this.selfTest || (await this.selfTest)) return this.state === 'ready';
+        if (this.state === 'error') return false;
+        await this.probe();
+        if (this.state !== 'ready') return false;
+      }
+      return false;
+    }
+
     // 「意思是否接近」的置信度 0~1；服务不可用时返回 null（调用方退回文字匹配）
     async judge(meaning, answer) {
       if (!Core.hasContent(answer)) return 0;
@@ -176,6 +220,7 @@
       if (this.cache.has(key)) return this.cache.get(key);
       if (this.state === 'starting') await this.waitReady(10000);
       if (this.state !== 'ready' || !this.info || !this.info.llama) return null;
+      if (!(await this._verified())) return null;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const p = await this._judgeOnce(meaning, answer);
