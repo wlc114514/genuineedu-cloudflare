@@ -2,3 +2,5 @@
 *.pl text eol=lf
 *.tpl text eol=crlf
 *.bat text eol=crlf
+data/*.txt text eol=lf
+data/*.txt text eol=lf

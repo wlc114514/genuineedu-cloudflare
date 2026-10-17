@@ -240,7 +240,7 @@
   }
   function parseAssoc(text) {
     const map = new Map();
-    for (const line of String(text).split('\n')) {
+    for (const line of String(text).split(/\r?\n/)) {
       if (!line) continue;
       const i = line.indexOf(' ');
       if (i < 0) map.set(line, []); else map.set(line.slice(0, i), line.slice(i + 1).split(' '));
