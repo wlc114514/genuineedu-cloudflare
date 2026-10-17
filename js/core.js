@@ -134,6 +134,31 @@
     return senses.map(s => ({ sense: s, ok: senseMatched(s, parts, mode) }));
   }
 
+  // ---------------- 一词多义：意思几乎一样的释义合并成一条 ----------------
+  // 「v. 统一 v. 使统一」这种：题面给一条，另一条照抄就算对，没必要分开考
+  const SENSE_MERGE_THRESHOLD = 0.9;   // 智能判分双向都大于它才合并
+  function combinePos(list) {
+    const parts = [];
+    for (const p of list) for (const x of String(p || '').split('&')) if (x && !parts.includes(x)) parts.push(x);
+    return parts.join('&');
+  }
+  // pairs：判定为同义的释义下标 [[i, j], …]；按连通关系合并（a≈b、b≈c → 三条合一），保持原来的先后顺序
+  function mergeSenses(senses, pairs) {
+    const parent = senses.map((_, i) => i);
+    const find = i => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    for (const [i, j] of pairs) parent[find(j)] = find(i);
+    const groups = new Map();
+    senses.forEach((s, i) => {
+      const r = find(i);
+      if (!groups.has(r)) groups.set(r, []);
+      groups.get(r).push(s);
+    });
+    return [...groups.values()].map(g => (g.length === 1 ? g[0] : {
+      pos: combinePos(g.map(s => s.pos)),
+      meanings: [...new Set(g.flatMap(s => String(s.meanings).split(/[；;]/).map(x => x.trim()).filter(Boolean)))].join('；'),
+    }));
+  }
+
   // ---------------- 出题 ----------------
   function shuffle(arr, rand = Math.random) {
     const a = arr.slice();
@@ -367,6 +392,7 @@
   return {
     normalizePos, isPos, parseWordList,
     cleanMeaning, splitMeanings, hasContent, gradeMeanings,
+    SENSE_MERGE_THRESHOLD, combinePos, mergeSenses,
     shuffle, clampInt, buildQuestions, generateHint, normalizeSpelling, spellingCorrect,
     JEV, jevPrompt, jevMargin, jevProbability, gradeAnswer,
     ASSOC, glossKeywords, parseAssoc, assocKeywords, assocMatch,

@@ -114,7 +114,49 @@
   }
   $('#lib-text').addEventListener('input', () => { clearTimeout(parseTimer); parseTimer = setTimeout(updateParse, 150); });
 
-  $('#lib-save').addEventListener('click', () => {
+  // 一词多义里意思几乎一样的释义合并成一条。宁可不合并，也不能把两个不同的意思合并掉：
+  // 词义联想双向都认为同义，并且智能判分双向都大于 0.9，才合并。
+  // 实测（.testcache/merge-eval.mjs，120 对意思不同的释义）：只用模型错合并 10 对，加上词义联想后 1 对。
+  // 没装 / 装不了 / 词表没下载下来 / 中途断开：返回 checked: false，词库照常保存，只是不合并（已经查完的词保留合并结果）
+  async function mergeSimilarSenses(words, progress) {
+    const multi = words.filter(w => w.senses.length > 1);
+    if (!multi.length) return { merged: 0, checked: true };
+    if (!jev.installed && jev.state !== 'ready') return { merged: 0, checked: false };
+    progress('正在下载词义联想词表…');
+    await Promise.race([loadAssoc(), new Promise(r => setTimeout(r, 15000))]);
+    if (!assocDict) return { merged: 0, checked: false };
+    const synonym = (a, b) => Core.assocMatch(assocDict, a, b).ok && Core.assocMatch(assocDict, b, a).ok;
+    if (jev.state !== 'ready') {
+      progress('正在启动智能判分，检查一词多义…');
+      if (!(await jev.start())) return { merged: 0, checked: false };
+    }
+    const total = multi.reduce((n, w) => n + w.senses.length * (w.senses.length - 1) / 2, 0);
+    let done = 0, merged = 0;
+    for (const w of multi) {
+      const pairs = [];
+      for (let i = 0; i < w.senses.length; i++) {
+        for (let j = i + 1; j < w.senses.length; j++) {
+          progress(`正在用智能判分检查一词多义：${++done} / ${total}`);
+          const a = w.senses[i].meanings, b = w.senses[j].meanings;
+          if (!synonym(a, b)) continue;   // 词义联想不认可的，不用再问模型
+          const p = await jev.judge(a, b);
+          const q = p !== null && p > Core.SENSE_MERGE_THRESHOLD ? await jev.judge(b, a) : p;
+          if (p === null || q === null) return { merged, checked: false };
+          if (p > Core.SENSE_MERGE_THRESHOLD && q > Core.SENSE_MERGE_THRESHOLD) pairs.push([i, j]);
+        }
+      }
+      if (pairs.length) {
+        const before = w.senses.length;
+        w.senses = Core.mergeSenses(w.senses, pairs);
+        merged += before - w.senses.length;
+      }
+    }
+    return { merged, checked: true };
+  }
+
+  let saving = false;
+  $('#lib-save').addEventListener('click', async () => {
+    if (saving) return;
     updateParse();
     let name = $('#lib-name').value.trim();
     if (!parsed.words.length) return;
@@ -128,6 +170,19 @@
       else map.set(k, { word: w.word, senses: w.senses.slice() });
     }
     const words = [...map.values()];
+    saving = true;
+    $('#lib-save').disabled = true;
+    const status = $('#parse-status');
+    let check;
+    try {
+      check = await mergeSimilarSenses(words, msg => { status.textContent = msg; });
+    } finally {
+      saving = false;
+      $('#lib-save').disabled = false;
+      status.textContent = '';
+    }
+    const mergeNote = check.merged ? `；${check.merged} 处意思相同的释义已合并`
+      : !check.checked ? '；一词多义要用智能判分检查，这次没有检查' : '';
     libraries[name] = { name, words, createdAt: new Date().toISOString(), count: words.length };
     if (!saveLibraries()) { delete libraries[name]; return; }
     $('#lib-name').value = '';
@@ -137,7 +192,7 @@
     $('#lib-import').hidden = true;
     renderLibraries();
     showPreview(name);
-    toast(`已保存「${name}」，共 ${words.length} 个单词`);
+    toast(`已保存「${name}」，共 ${words.length} 个单词${mergeNote}`, mergeNote ? 5000 : 2600);
   });
 
   function renderLibraries() {

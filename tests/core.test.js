@@ -181,3 +181,14 @@ test('判分：没有模型时用词义联想，模型给过结论就以模型�
   r = await C.gradeAnswer(q, input, { criteria: 'any', match: 'strict' }, null, assoc);
   assert.equal(r.correct, false);
 });
+
+test('一词多义：同义释义合并（连通合并、词性合并、去重、保持顺序）', () => {
+  const senses = [{ pos: 'n', meanings: '标志' }, { pos: 'n', meanings: '目标' }, { pos: 'v', meanings: '标记；标志' }, { pos: 'n', meanings: '记号' }];
+  assert.deepEqual(C.mergeSenses(senses, []), senses);
+  assert.deepEqual(C.mergeSenses(senses, [[0, 2], [2, 3]]), [
+    { pos: 'n&v', meanings: '标志；标记；记号' },
+    { pos: 'n', meanings: '目标' },
+  ]);
+  assert.equal(C.combinePos(['v&n', 'n', '', 'adj']), 'v&n&adj');
+  assert.equal(C.SENSE_MERGE_THRESHOLD, 0.9);
+});
