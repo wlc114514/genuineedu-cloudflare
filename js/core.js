@@ -210,17 +210,94 @@
     return 1 / (1 + Math.exp(-z));
   }
 
+  // ---------------- 词义联想（不装模型时用） ----------------
+  // 词表来自 CC-CEDICT：中文词 → 英文释义里的关键词。两个中文释义的关键词有交集，就算意思相近。
+  const GLOSS_STOP = new Set(('to a an the of be is are was one one\'s oneself sb sth someone something somebody and or in on at for with by from '
+    + 'as into up out off about over very etc also used use make made cause get become have has give take put do thing person people way kind type '
+    + 'sort state quality act particular certain more most much many not no non lit fig esp usu abbr var old word character term form bound place '
+    + 'time this that its his her their who which what all any some other each than too can may will would should being been it them they you '
+    + 'he she we us our your my me i such so just only like even still yet there here when where how why else less own same').split(' '));
+  function stem(w) {
+    if (w.length <= 4) return w;
+    w = w.replace(/(?:ness|ment|ments|fully|ful|ly)$/, '') || w;
+    if (/ies$/.test(w)) w = w.slice(0, -3) + 'y';
+    else if (/ied$/.test(w)) w = w.slice(0, -3) + 'y';
+    else if (/ing$/.test(w) && w.length > 5) w = w.slice(0, -3);
+    else if (/ed$/.test(w) && w.length > 4) w = w.slice(0, -2);
+    else if (/[^s]s$/.test(w)) w = w.slice(0, -1);
+    if (/([b-df-hj-np-tv-z])\1$/.test(w) && !/(ss|ll)$/.test(w)) w = w.slice(0, -1);   // running → runn → run
+    return w.replace(/e$/, '').replace(/i$/, 'y');                                      // unified → unifi → unify；embarrass
+  }
+  function glossKeywords(gloss) {
+    const g = String(gloss).toLowerCase().replace(/\([^)]*\)/g, ' ');
+    const out = new Set();
+    for (const t of g.split(/[^a-z']+/)) {
+      if (t.length < 3 || GLOSS_STOP.has(t)) continue;
+      const s = stem(t.replace(/'s$/, ''));
+      if (s.length >= 3 && !GLOSS_STOP.has(s)) out.add(s);
+    }
+    return [...out];
+  }
+  function parseAssoc(text) {
+    const map = new Map();
+    for (const line of String(text).split('\n')) {
+      if (!line) continue;
+      const i = line.indexOf(' ');
+      if (i < 0) map.set(line, []); else map.set(line.slice(0, i), line.slice(i + 1).split(' '));
+    }
+    return map;
+  }
+  // 只起语法作用的字词：「令人难堪的」「使一致」「有名的」里真正表义的是后面那部分
+  const FUNCTION_SEGS = new Set(['的', '地', '得', '了', '着', '过', '使', '令', '令人', '让', '被', '把', '将', '之', '于', '很', '非常', '十分', '有', '一', '个', '种', '些', '某', '所', '是', '在', '者']);
+  // 正向最大匹配分词，取实词的关键词。单字义项太杂（「成」有十几个意思），
+  // 只有整条释义里没有多字词时（「饿的」「买」）才用单字
+  function assocKeywords(dict, text) {
+    const s = cleanMeaning(text).replace(/[^一-鿿]/g, '');
+    const segs = [];
+    for (let i = 0; i < s.length;) {
+      let len = Math.min(4, s.length - i);
+      while (len > 1 && !dict.has(s.slice(i, i + len))) len--;
+      const seg = s.slice(i, i + len);
+      if (!FUNCTION_SEGS.has(seg)) segs.push(seg);
+      i += len;
+    }
+    const multi = segs.filter(x => x.length > 1);
+    const out = new Set();
+    for (const seg of multi.length ? multi : segs) for (const k of dict.get(seg) || []) out.add(k);
+    return out;
+  }
+  // CC-CEDICT 的义项大致按常用程度排序：只共用一个靠后的义项（主要 main/principal/major 与 重要 important/significant/major）
+  // 不算数。共用关键词在两边的排位 i、j（从 1 起）给分 1/√(i·j)，最高分够 MIN_RANK_SCORE，或者共用两个以上，才算意思相近。
+  // 阈值在 tests/fixtures/assoc-eval.json 上调定，见 tests/assoc-eval.mjs
+  const ASSOC = Object.freeze({ MIN_RANK_SCORE: 0.6, MIN_SHARED: 2 });
+  // 返回 {ok, shared}；dict 为空时返回 null（词表没加载，退回文字匹配）
+  function assocMatch(dict, expected, answer, opts = ASSOC) {
+    if (!dict || !dict.size) return null;
+    const a = [...assocKeywords(dict, expected)], b = [...assocKeywords(dict, answer)];
+    const shared = [];
+    let best = 0;
+    a.forEach((k, i) => {
+      const j = b.indexOf(k);
+      if (j < 0) return;
+      shared.push(k);
+      best = Math.max(best, 1 / Math.sqrt((i + 1) * (j + 1)));
+    });
+    return { ok: shared.length >= opts.MIN_SHARED || best >= opts.MIN_RANK_SCORE, shared };
+  }
+
   // ---------------- 判一道题 ----------------
-  // judge(标准释义, 学生写的一项) → Promise<p|null>；null 表示模型不可用，退回纯文字匹配
-  async function gradeAnswer(q, input, config, judge) {
+  // judge(标准释义, 学生写的一项) → Promise<p|null>；null 表示模型不可用
+  // assoc(标准释义, 学生写的一项) → {ok, shared}|null：词义联想，模型不可用时代替它；null 表示词表没加载，只用文字匹配
+  async function gradeAnswer(q, input, config, judge, assoc) {
     const spellOk = spellingCorrect(input.spelling, q.word);
     const needMeaning = config.criteria === 'any' && q.ask.length > 0;
     const senses = needMeaning
       ? gradeMeanings(q.ask, input.meanings, config.match).map(r => ({ sense: r.sense, ok: r.ok, via: r.ok ? 'text' : null }))
       : [];
+    const pieces = String(input.meanings).split(MEANING_SEP).map(s => s.trim()).filter(hasContent).slice(0, 6);
+    let modelAnswered = false;
     // 拼写对了但有释义没对上：让本地模型判断「意思是否接近」
-    if (judge && spellOk && senses.some(s => !s.ok) && hasContent(input.meanings)) {
-      const pieces = String(input.meanings).split(MEANING_SEP).map(s => s.trim()).filter(hasContent).slice(0, 6);
+    if (judge && spellOk && senses.some(s => !s.ok) && pieces.length) {
       outer:
       for (const s of senses) {
         if (s.ok) continue;
@@ -228,7 +305,18 @@
           let p = null;
           try { p = await judge(s.sense.meanings, piece); } catch (_) { p = null; }
           if (p === null) break outer;
+          modelAnswered = true;
           if (p >= JEV.THRESHOLD) { Object.assign(s, { ok: true, via: 'jev', p, piece }); break; }
+        }
+      }
+    }
+    // 模型没装或没响应：用词义联想。模型给过结论就以模型为准；严格模式只认原文
+    if (assoc && !modelAnswered && config.match !== 'strict') {
+      for (const s of senses) {
+        if (s.ok) continue;
+        for (const piece of pieces) {
+          const r = assoc(s.sense.meanings, piece);
+          if (r && r.ok) { Object.assign(s, { ok: true, via: 'assoc', piece, shared: r.shared }); break; }
         }
       }
     }
@@ -281,6 +369,7 @@
     cleanMeaning, splitMeanings, hasContent, gradeMeanings,
     shuffle, clampInt, buildQuestions, generateHint, normalizeSpelling, spellingCorrect,
     JEV, jevPrompt, jevMargin, jevProbability, gradeAnswer,
+    ASSOC, glossKeywords, parseAssoc, assocKeywords, assocMatch,
     escapeHtml, readJson, csvCell, formatDuration, formatSenses,
     sanitizeLibraries, sanitizeRecords,
   };

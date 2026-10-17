@@ -79,7 +79,7 @@ async function main() {
     await page.waitForSelector('#view-test:not([hidden])');
     await page.type('#t-student', '汪同学');
     await page.click('#t-all');
-    await page.select('#t-display', 'random');
+    await page.$eval('input[name="t-display"][value="random"]', el => el.click());
     await page.screenshot({ path: path.join(SHOTS, '3-setup.png') });
     await page.click('#t-start');
     const lib = await page.evaluate(() => Object.values(JSON.parse(localStorage.libraries))[0].words);
@@ -114,14 +114,14 @@ async function main() {
     }
     await page.waitForSelector('#view-records:not([hidden])');
     const score = await page.$eval('.record .score', el => el.textContent);
-    check(score.startsWith('80.0'), `交卷后跳到记录页：正确率 ${score}`);
+    check(score.startsWith('80'), `交卷后跳到记录页：正确率 ${score}`);
     check((await page.$$eval('.record tbody tr', r => r.length)) === 1, '错词表里有 1 个词');
     await page.screenshot({ path: path.join(SHOTS, '5-records.png'), fullPage: true });
 
     console.log('\n[4] 只考拼写 + 限时');
     await page.click('.tabs [data-view="test"]');
-    await page.select('#t-display', 'all');
-    await page.select('#t-timeout', '5');
+    await page.$eval('input[name="t-display"][value="all"]', el => el.click());
+    await page.$eval('input[name="t-timeout"][value="5"]', el => el.click());
     await page.$eval('#t-all', el => { if (el.checked) el.click(); });
     await page.$eval('#t-count', el => { el.value = '1'; });
     await page.click('#t-start');
@@ -181,7 +181,7 @@ async function main() {
       check(!!chip, '装过的用户打开网页：自动连上，显示「已开启」');
       await p2.click('.tabs [data-view="test"]');
       await p2.$eval('#t-student', el => { el.value = 'Adam'; });
-      await p2.select('#t-display', 'random');
+      await p2.$eval('input[name="t-display"][value="random"]', el => el.click());
       await p2.$eval('#t-all', el => { if (!el.checked) el.click(); });
       await p2.click('#t-start');
       await p2.waitForSelector('#a-mean');

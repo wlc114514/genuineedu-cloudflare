@@ -153,3 +153,31 @@ test('旧数据体检：坏条目丢弃、空释义清掉', () => {
   const storage = { getItem: () => '{bad json' };
   assert.deepEqual(C.readJson(storage, 'k', { d: 1 }), { d: 1 });
 });
+
+test('词义联想：关键词排位、单字只在没有多字词时用、功能字不算', () => {
+  const dict = C.parseAssoc(['尴尬 awkward embarrass', '难堪 hard embarrass awkward', '高兴 happy glad', '主要 main principal major',
+    '重要 important significant major', '令人', '成为', '成 succ finish complet', '饿 hungry', '饥饿 hungry starv', ''].join('\n'));
+  assert.equal(C.assocMatch(dict, '尴尬的', '令人难堪的').ok, true);
+  assert.equal(C.assocMatch(dict, '尴尬的', '高兴的').ok, false);
+  assert.equal(C.assocMatch(dict, '重要的', '主要的').ok, false, '只共用一个靠后的义项不算');
+  assert.deepEqual([...C.assocKeywords(dict, '成为')], [], '「成为」不能拆成单字「成」');
+  assert.equal(C.assocMatch(dict, '饥饿的', '饿的').ok, true, '整条只有单字时用单字');
+  assert.equal(C.assocMatch(new Map(), '尴尬', '难堪'), null, '词表没加载');
+});
+
+test('判分：没有模型时用词义联想，模型给过结论就以模型为准，严格模式不联想', async () => {
+  const dict = C.parseAssoc('尴尬 awkward embarrass\n难堪 hard embarrass awkward\n统一 unify integrate');
+  const q = { word: 'awkward', senses: [{ pos: 'adj', meanings: '尴尬的' }, { pos: 'v', meanings: '统一' }], shown: [{ pos: 'v', meanings: '统一' }], ask: [{ pos: 'adj', meanings: '尴尬的' }] };
+  const input = { spelling: 'awkward', meanings: '令人难堪的' };
+  const assoc = (m, a) => C.assocMatch(dict, m, a);
+  const loose = { criteria: 'any', match: 'loose' };
+  let r = await C.gradeAnswer(q, input, loose, null, assoc);
+  assert.equal(r.correct, true);
+  assert.equal(r.senses[0].via, 'assoc');
+  r = await C.gradeAnswer(q, input, loose, async () => 0.1, assoc);
+  assert.equal(r.correct, false, '模型说不接近，不再用联想翻案');
+  r = await C.gradeAnswer(q, input, loose, async () => null, assoc);
+  assert.equal(r.senses[0].via, 'assoc', '模型没响应时用联想');
+  r = await C.gradeAnswer(q, input, { criteria: 'any', match: 'strict' }, null, assoc);
+  assert.equal(r.correct, false);
+});

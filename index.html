@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="dark light">
+  <meta name="color-scheme" content="light dark">
   <title>单词拼写测试</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23b91c1c'/%3E%3Ctext x='16' y='23' font-size='19' text-anchor='middle' fill='white' font-family='Georgia,serif' font-weight='700'%3EW%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231f3044'/%3E%3Ctext x='16' y='22' font-size='17' text-anchor='middle' fill='white' font-family='Verdana,sans-serif' font-weight='700'%3Eab%3C/text%3E%3C/svg%3E">
+  <link rel="preload" href="fonts/andika-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- 主题要在首帧前定下来，否则会先闪一下系统配色 -->
+  <script>try { var t = localStorage.getItem('theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,7 +16,7 @@
 <header class="topbar">
   <div class="wrap topbar-inner">
     <a class="brand" href="#library" data-view-link="library">
-      <span class="brand-mark" aria-hidden="true">W</span>
+      <span class="brand-mark" aria-hidden="true">ab</span>
       <span class="brand-name">单词拼写测试</span>
     </a>
     <nav class="tabs" aria-label="主导航">
@@ -21,11 +24,14 @@
       <button type="button" data-view="test">测试</button>
       <button type="button" data-view="records">记录</button>
     </nav>
-    <button type="button" class="jev-chip" id="jev-chip" aria-haspopup="dialog" data-state="unknown">
-      <span class="dot" aria-hidden="true"></span>
-      <span class="jev-chip-label">智能判分</span>
-      <span class="jev-chip-state" id="jev-chip-state">未开启</span>
-    </button>
+    <div class="topbar-tools">
+      <button type="button" class="theme-btn" id="theme-btn" aria-label="切换配色"></button>
+      <button type="button" class="jev-chip" id="jev-chip" aria-haspopup="dialog" data-state="unknown">
+        <span class="dot" aria-hidden="true"></span>
+        <span class="jev-chip-label">智能判分</span>
+        <span class="jev-chip-state" id="jev-chip-state">未开启</span>
+      </button>
+    </div>
   </div>
 </header>
 
@@ -33,45 +39,49 @@
 
   <!-- ============ 词库 ============ -->
   <section class="view" id="view-library" data-view-panel="library">
-    <div class="grid-2">
-      <div class="card">
-        <h2>导入词库</h2>
-        <p class="muted">每行一个单词：<b>单词 词性 释义</b>，可以有多个词性。直接从 Excel 复制、用 Tab / 分号 / 空格分隔都行。</p>
-        <label class="field">
-          <span>词库名称</span>
-          <input type="text" id="lib-name" maxlength="60" placeholder="例如：核心词汇 Unit 3" autocomplete="off">
-        </label>
-        <label class="field">
-          <span>单词表</span>
-          <textarea id="lib-text" rows="10" spellcheck="false" placeholder="mark	v&n.	标志、标记	n.	目标&#10;unify v. 统一&#10;plus conj. 加 adv. 此外"></textarea>
-        </label>
-        <div class="parse-status" id="parse-status" aria-live="polite"></div>
-        <div class="row-actions">
-          <button type="button" class="btn primary" id="lib-save" disabled>保存词库</button>
-        </div>
+    <div class="page-head">
+      <div>
+        <h1>词库</h1>
+        <p class="lede" id="lib-summary"></p>
       </div>
-
-      <div class="card">
-        <div class="card-head">
-          <h2>我的词库</h2>
-          <div class="row-actions compact">
-            <button type="button" class="btn ghost small" data-action="export-txt">导出 TXT</button>
-            <button type="button" class="btn ghost small" data-action="export-csv">导出 CSV</button>
-          </div>
-        </div>
-        <ul class="lib-list" id="lib-list"></ul>
-        <p class="muted small">数据只保存在这个浏览器里，换浏览器或清理数据会丢失，记得偶尔导出备份。</p>
+      <div class="row-actions">
+        <span class="row-actions" id="lib-export">
+          <button type="button" class="btn quiet" data-action="export-txt">导出 TXT</button>
+          <button type="button" class="btn quiet" data-action="export-csv">导出 CSV</button>
+        </span>
+        <button type="button" class="btn primary" data-action="new-lib" id="lib-new">新建词库</button>
       </div>
     </div>
-    <div class="card" id="lib-preview" hidden></div>
+
+    <div class="paper import" id="lib-import" hidden>
+      <h2>新建词库</h2>
+      <p class="lede">每行一个单词，格式是「单词 词性 释义」，一个词可以有多个词性。可以直接从 Excel 复制，也可以用 Tab、分号或空格分隔。</p>
+      <label class="field">
+        <span>词库名称</span>
+        <input type="text" id="lib-name" maxlength="60" placeholder="例如：核心词汇 Unit 3" autocomplete="off">
+      </label>
+      <label class="field">
+        <span>单词表</span>
+        <textarea id="lib-text" rows="9" spellcheck="false" placeholder="mark	v&n.	标志、标记	n.	目标&#10;unify v. 统一&#10;plus conj. 加 adv. 此外"></textarea>
+      </label>
+      <div class="parse-status" id="parse-status" aria-live="polite"></div>
+      <div class="row-actions">
+        <button type="button" class="btn primary" id="lib-save" disabled>保存词库</button>
+        <button type="button" class="btn quiet" data-action="cancel-import" id="lib-cancel">取消</button>
+      </div>
+    </div>
+
+    <ol class="paper lib-list" id="lib-list"></ol>
+    <section class="paper" id="lib-preview" hidden></section>
+    <p class="note">词库只存在这个浏览器里。换浏览器或清理浏览数据会丢失，请定期导出备份。</p>
   </section>
 
   <!-- ============ 测试 ============ -->
   <section class="view" id="view-test" data-view-panel="test" hidden>
-    <form class="card setup" id="test-setup" autocomplete="off">
-      <h2>开始测试</h2>
+    <form class="paper setup" id="test-setup" autocomplete="off">
+      <h1>开始测试</h1>
       <div class="setup-grid">
-        <label class="field span-2">
+        <label class="field">
           <span>词库</span>
           <select id="t-lib" required></select>
         </label>
@@ -79,6 +89,18 @@
           <span>学生姓名</span>
           <input type="text" id="t-student" maxlength="30" placeholder="姓名" required>
         </label>
+      </div>
+
+      <fieldset class="field">
+        <legend>题型</legend>
+        <div class="seg">
+          <label><input type="radio" name="t-display" value="random"><span>拼写和释义</span></label>
+          <label><input type="radio" name="t-display" value="all"><span>只考拼写</span></label>
+        </div>
+        <p class="field-note" id="t-display-note"></p>
+      </fieldset>
+
+      <div class="setup-grid">
         <div class="field">
           <span>题量</span>
           <div class="inline">
@@ -86,70 +108,71 @@
             <label class="check"><input type="checkbox" id="t-all"> 全部</label>
           </div>
         </div>
-        <label class="field">
-          <span>题面</span>
-          <select id="t-display">
-            <option value="random">给一个词性的释义，写出其余词性</option>
-            <option value="all">给全部释义，只考拼写</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>拼写提示</span>
-          <select id="t-hint">
-            <option value="auto">露出前一半字母</option>
-            <option value="first">只露首字母</option>
-            <option value="none">不提示（纯听写）</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>判错标准</span>
-          <select id="t-criteria">
-            <option value="any">拼写或释义错都算错</option>
-            <option value="spelling">只看拼写</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>释义匹配</span>
-          <select id="t-match">
-            <option value="loose">宽松：包含关键词即可</option>
-            <option value="strict">严格：和词表一字不差</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>每题限时</span>
-          <select id="t-timeout">
-            <option value="0">不限时</option>
-            <option value="5">5 秒</option>
-            <option value="10">10 秒</option>
-            <option value="20">20 秒</option>
-            <option value="30">30 秒</option>
-            <option value="60">60 秒</option>
-          </select>
-        </label>
+        <fieldset class="field">
+          <legend>拼写提示</legend>
+          <div class="seg">
+            <label><input type="radio" name="t-hint" value="auto"><span>前一半</span></label>
+            <label><input type="radio" name="t-hint" value="first"><span>首字母</span></label>
+            <label><input type="radio" name="t-hint" value="none"><span>不提示</span></label>
+          </div>
+        </fieldset>
       </div>
+
+      <fieldset class="field">
+        <legend>每题限时</legend>
+        <div class="seg">
+          <label><input type="radio" name="t-timeout" value="0"><span>不限</span></label>
+          <label><input type="radio" name="t-timeout" value="5"><span>5 秒</span></label>
+          <label><input type="radio" name="t-timeout" value="10"><span>10 秒</span></label>
+          <label><input type="radio" name="t-timeout" value="20"><span>20 秒</span></label>
+          <label><input type="radio" name="t-timeout" value="30"><span>30 秒</span></label>
+          <label><input type="radio" name="t-timeout" value="60"><span>60 秒</span></label>
+        </div>
+      </fieldset>
+
+      <details class="more">
+        <summary>判分方式</summary>
+        <div class="setup-grid">
+          <label class="field">
+            <span>什么算错</span>
+            <select id="t-criteria">
+              <option value="any">拼写或释义错一个就算错</option>
+              <option value="spelling">只看拼写</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>释义怎么对</span>
+            <select id="t-match">
+              <option value="loose">宽松：写出关键词就算对</option>
+              <option value="strict">严格：要和词表一字不差</option>
+            </select>
+          </label>
+        </div>
+      </details>
+
       <div class="setup-foot">
-        <p class="muted small" id="t-jev-note"></p>
+        <p class="field-note" id="t-jev-note"></p>
         <button type="submit" class="btn primary large" id="t-start">开始测试</button>
       </div>
     </form>
 
     <div class="runner" id="runner" hidden>
-      <div class="runner-head">
-        <div class="progress"><div class="progress-bar" id="r-bar"></div></div>
-        <div class="runner-meta">
-          <span id="r-count">1 / 20</span>
-          <span class="timer" id="r-timer" hidden></span>
-          <button type="button" class="link" id="r-quit">结束测试</button>
-        </div>
+      <div class="runner-meta">
+        <span id="r-count">1 / 20</span>
+        <span class="timer" id="r-timer" hidden></span>
+        <button type="button" class="link" id="r-quit">结束测试</button>
       </div>
-      <div class="card question" id="r-card"></div>
+      <div class="paper exercise">
+        <div class="progress"><div class="progress-bar" id="r-bar"></div></div>
+        <div id="r-card"></div>
+      </div>
     </div>
   </section>
 
   <!-- ============ 记录 ============ -->
   <section class="view" id="view-records" data-view-panel="records" hidden>
-    <div class="card-head">
-      <h2>测试记录</h2>
+    <div class="page-head">
+      <h1>测试记录</h1>
       <label class="field inline-field">
         <span>学生</span>
         <select id="rec-student"><option value="">全部</option></select>
@@ -165,7 +188,7 @@
 
 <!-- ============ 智能判分面板 ============ -->
 <dialog class="sheet" id="jev-dialog" aria-labelledby="jev-title">
-  <form method="dialog" class="sheet-close"><button class="icon-btn" aria-label="关闭">×</button></form>
+  <form method="dialog" class="sheet-close"><button class="close-btn" aria-label="关闭">×</button></form>
   <h2 id="jev-title">智能判分</h2>
   <div id="jev-body"></div>
 </dialog>

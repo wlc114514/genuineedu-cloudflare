@@ -16,7 +16,14 @@
 - **Windows**：下载一个 .bat → 双击。不要管理员权限，不建桌面图标，「设置 → 应用」里可以卸载。
 - **macOS / Linux**：终端里粘贴一行命令。
 
-装好之后就不用管了：开始测试时网页通过 `jev://` 链接唤起服务，所有页面关掉约 10 秒后服务自己退出；空闲时模型自动休眠释放内存。不开机自启、不常驻。没装时照常使用文字匹配。
+装好之后就不用管了：开始测试时网页通过 `jev://` 链接唤起服务，所有页面关掉约 10 秒后服务自己退出；空闲时模型自动休眠释放内存。不开机自启、不常驻。
+
+### 词义联想（没装智能判分时）
+
+没装智能判分、或者在 iPad / 手机这类装不了的设备上，释义用「词义联想」判：把两个中文释义按 CC-CEDICT 词典翻成英文关键词，
+主要义项有交集就算近义（「令人难堪的」↔「尴尬的」都对应 awkward / embarrassed）。词表 `data/assoc.txt` 约 2.5MB，
+只在需要判释义时下载。严格模式不联想。效果见 `node tests/assoc-eval.mjs`：在 268 对人工标注的释义上，
+近义写法判对 72%（纯文字匹配 3%），错的判成对 4%；误判率超过 5% 时 `npm test` 会失败。
 
 ## 目录
 
@@ -31,6 +38,8 @@ jev/unix/                        install.sh 安装器（macOS / Linux）· agent
 install-jev-windows.bat          由模板生成的静态版（旧链接 / 直链用），`node tools/build.mjs`
 install-jev-macos.sh             旧链接兼容，转到 jev/unix/install.sh
 tests/                           单元测试 + 管家 / 安装器 / 浏览器端到端测试
+fonts/                           Andika 英文字体（SIL OFL）
+data/assoc.txt                   词义联想词表，由 `npm run build:assoc -- <cedict_ts.u8>` 从 CC-CEDICT 生成（CC BY-SA 4.0）
 files/                           桌面版背词工具脚本（与网页无关）
 ```
 

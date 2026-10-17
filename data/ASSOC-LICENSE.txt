@@ -1,0 +1,10 @@
+data/assoc.txt 由 tools/build-assoc.mjs 从 CC-CEDICT 生成（只保留了简体词和英文释义里的关键词）。
+
+CC-CEDICT
+Community maintained free Chinese-English dictionary.
+Published by MDBG — https://www.mdbg.net/chinese/dictionary?page=cc-cedict
+License: Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+Referenced works: CEDICT - Copyright (C) 1997, 1998 Paul Andrew Denisowski
+
+按 CC BY-SA 4.0，data/assoc.txt 同样以 CC BY-SA 4.0 发布。

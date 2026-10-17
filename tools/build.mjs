@@ -32,7 +32,7 @@ if (process.argv.includes('--check')) {
 const distIdx = process.argv.indexOf('--dist');
 if (distIdx > 0) {
   const dist = path.resolve(process.argv[distIdx + 1] || path.join(ROOT, 'dist'));
-  const SITE = ['index.html', 'style.css', '_headers', 'install-jev-windows.bat', 'install-jev-macos.sh', 'js', 'jev', 'files'];
+  const SITE = ['index.html', 'style.css', '_headers', 'install-jev-windows.bat', 'install-jev-macos.sh', 'js', 'fonts', 'data', 'jev', 'files'];
   fs.rmSync(dist, { recursive: true, force: true });
   for (const item of SITE) fs.cpSync(path.join(ROOT, item), path.join(dist, item), { recursive: true });
   console.log('网站文件已输出到 ' + dist);

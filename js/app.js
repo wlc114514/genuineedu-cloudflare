@@ -51,9 +51,31 @@
     if (btn) { const old = btn.textContent; btn.textContent = ok ? '已复制 ✓' : '请手动复制'; setTimeout(() => { btn.textContent = old; }, 1800); }
     return ok;
   }
-  const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('zh-CN', { hour12: false }); };
+  const fmtDate = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }); };
+  const fmtDay = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }); };
   const senseHtml = s => (s.pos ? `<span class="pos">${h(s.pos)}.</span>` : '') + h(s.meanings);
   const stamp = () => new Date().toISOString().slice(0, 10);
+  const radioValue = name => { const el = document.querySelector(`input[name="${name}"]:checked`); return el ? el.value : ''; };
+  const setRadio = (name, value) => { const el = document.querySelector(`input[name="${name}"][value="${value}"]`); if (el) el.checked = true; };
+
+  // ======================================================== 配色：跟随系统 → 浅色 → 深色
+  const THEMES = { auto: ['◐', '配色：跟随系统'], light: ['☀', '配色：浅色'], dark: ['☾', '配色：深色'] };
+  let theme = 'auto';
+  try { theme = localStorage.getItem('theme') || 'auto'; } catch (_) { /* 无痕模式 */ }
+  if (!THEMES[theme]) theme = 'auto';
+  function applyTheme() {
+    if (theme === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme;
+    const [icon, label] = THEMES[theme];
+    $('#theme-btn').textContent = icon;
+    $('#theme-btn').title = label;
+    $('#theme-btn').setAttribute('aria-label', label);
+  }
+  $('#theme-btn').addEventListener('click', () => {
+    theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
+    try { localStorage.setItem('theme', theme); } catch (_) { /* 只是这次不记住 */ }
+    applyTheme();
+  });
+  applyTheme();
 
   // ======================================================== 视图切换
   function showView(name) {
@@ -63,6 +85,8 @@
     }
     for (const p of $$('[data-view-panel]')) p.hidden = p.dataset.viewPanel !== name;
     if (location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+    $('#toast').hidden = true;
+    if (name === 'library') renderLibraries();
     if (name === 'test') renderSetup();
     if (name === 'records') renderRecords();
   }
@@ -110,6 +134,7 @@
     $('#lib-text').value = '';
     updateParse();
     prefs.lib = name;
+    $('#lib-import').hidden = true;
     renderLibraries();
     showPreview(name);
     toast(`已保存「${name}」，共 ${words.length} 个单词`);
@@ -117,16 +142,29 @@
 
   function renderLibraries() {
     const libs = Object.values(libraries).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
-    $('#lib-list').innerHTML = libs.length ? libs.map(l => `
+    const total = libs.reduce((n, l) => n + Number(l.count || 0), 0);
+    $('#lib-summary').textContent = libs.length ? `${libs.length} 本词库，共 ${total} 个单词。` : '还没有词库。把单词表粘贴到下面，保存后就能开始测试。';
+    $('#lib-export').hidden = !libs.length;
+    $('#lib-cancel').hidden = !libs.length;
+    $('#lib-new').hidden = !libs.length;
+    if (!libs.length) $('#lib-import').hidden = false;
+    // 每本词库最近一次成绩（records 按时间倒序）
+    const last = {};
+    for (const r of records) if (!(r.libName in last)) last[r.libName] = Number(r.accuracy);
+    $('#lib-list').innerHTML = libs.map(l => `
       <li>
         <div class="lib-info">
           <div class="lib-name">${h(l.name)}</div>
-          <div class="lib-meta">${l.count} 词 · ${h(fmtDate(l.createdAt))}</div>
+          <div class="lib-meta">${l.count} 词，${h(fmtDay(l.createdAt))}建立</div>
         </div>
-        <button type="button" class="btn small primary" data-action="test-lib" data-name="${h(l.name)}">测试</button>
-        <button type="button" class="btn small ghost" data-action="preview-lib" data-name="${h(l.name)}">查看</button>
-        <button type="button" class="btn small ghost danger" data-action="delete-lib" data-name="${h(l.name)}">删除</button>
-      </li>`).join('') : '<li class="empty">还没有词库。在左边粘贴单词表就能创建。</li>';
+        ${l.name in last ? `<span class="grade" title="最近一次测试的正确率">${Math.round(last[l.name])}</span>` : '<span class="grade none">还没测过</span>'}
+        <div class="lib-actions">
+          <button type="button" class="btn small primary" data-action="test-lib" data-name="${h(l.name)}">开始测试</button>
+          <button type="button" class="btn small quiet" data-action="preview-lib" data-name="${h(l.name)}">查看单词</button>
+          <button type="button" class="btn small quiet danger" data-action="delete-lib" data-name="${h(l.name)}">删除</button>
+        </div>
+        <div class="lib-words">${l.words.slice(0, 8).map(w => h(w.word)).join(', ')}${l.words.length > 8 ? ' …' : ''}</div>
+      </li>`).join('');
   }
 
   function showPreview(name) {
@@ -134,8 +172,8 @@
     const el = $('#lib-preview');
     if (!lib) { el.hidden = true; return; }
     el.hidden = false;
-    el.innerHTML = `<div class="card-head"><h2>${h(lib.name)}</h2><button type="button" class="btn small ghost" data-action="close-preview">收起</button></div>
-      <div class="word-grid">${lib.words.slice(0, 300).map(w => `<div><b>${h(w.word)}</b>${w.senses.map(s => `<div class="sense-line">${senseHtml(s)}</div>`).join('')}</div>`).join('')}</div>
+    el.innerHTML = `<div class="preview-head"><h2>${h(lib.name)}，${lib.count} 词</h2><button type="button" class="btn small quiet" data-action="close-preview">收起</button></div>
+      <div class="dict">${lib.words.slice(0, 300).map(w => `<div class="entry"><span class="entry-word">${h(w.word)}</span>${w.senses.map(s => `<div class="sense-line">${senseHtml(s)}</div>`).join('')}</div>`).join('')}</div>
       ${lib.words.length > 300 ? `<p class="muted small">…还有 ${lib.words.length - 300} 个</p>` : ''}`;
     el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
@@ -165,19 +203,21 @@
     $('#t-count').value = prefs.count;
     $('#t-all').checked = prefs.all;
     $('#t-count').disabled = prefs.all;
-    for (const k of ['display', 'hint', 'criteria', 'match', 'timeout']) $('#t-' + k).value = prefs[k];
+    for (const k of ['display', 'hint', 'timeout']) setRadio('t-' + k, prefs[k]);
+    for (const k of ['criteria', 'match']) $('#t-' + k).value = prefs[k];
     syncSetup();
     $('#t-start').disabled = !names.length;
     renderJev();
   }
   function syncSetup() {
-    const allShown = $('#t-display').value === 'all';
+    const allShown = radioValue('t-display') === 'all';
+    $('#t-display-note').textContent = allShown ? '题目给出这个词的全部释义，只要写出单词。'
+      : '题目给出一个词性的释义，要写出单词和其余词性的释义。';
     $('#t-criteria').disabled = allShown;
     $('#t-match').disabled = allShown || $('#t-criteria').value === 'spelling';
   }
   $('#t-all').addEventListener('change', e => { $('#t-count').disabled = e.target.checked; });
-  $('#t-display').addEventListener('change', syncSetup);
-  $('#t-criteria').addEventListener('change', syncSetup);
+  $('#test-setup').addEventListener('change', syncSetup);
 
   $('#test-setup').addEventListener('submit', e => {
     e.preventDefault();
@@ -185,12 +225,13 @@
     const student = $('#t-student').value.trim();
     if (!lib) return toast('先在「词库」里建一个词库');
     if (!student) { $('#t-student').focus(); return toast('请填写学生姓名'); }
+    const display = radioValue('t-display') || 'random';
     const config = {
-      display: $('#t-display').value,
-      hint: $('#t-hint').value,
-      criteria: $('#t-display').value === 'all' ? 'spelling' : $('#t-criteria').value,
+      display,
+      hint: radioValue('t-hint') || 'auto',
+      criteria: display === 'all' ? 'spelling' : $('#t-criteria').value,
       match: $('#t-match').value,
-      timeout: Core.clampInt($('#t-timeout').value, 0, 600, 0),
+      timeout: Core.clampInt(radioValue('t-timeout'), 0, 600, 0),
     };
     const count = Core.clampInt($('#t-count').value, 1, 1000, 20);
     Object.assign(prefs, { student, lib: lib.name, count, all: $('#t-all').checked, display: config.display, hint: config.hint, criteria: $('#t-criteria').value, match: config.match, timeout: String(config.timeout) });
@@ -209,11 +250,31 @@
     return true;
   }
 
+  // ======================================================== 词义联想词表（约 1MB，只在要判释义时才下载，之后浏览器缓存）
+  let assocDict = null;
+  let assocLoading = null;
+  function loadAssoc() {
+    if (!assocLoading) {
+      assocLoading = fetch('data/assoc.txt')
+        .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+        .then(text => { assocDict = Core.parseAssoc(text); })
+        .catch(() => { assocLoading = null; });   // 下次再试；这次只用文字匹配
+    }
+    return assocLoading;
+  }
+  // 判分时词表还在路上：最多等 3 秒，等不到就这题只用文字匹配
+  async function assocJudge() {
+    if (!assocDict) await Promise.race([loadAssoc(), new Promise(r => setTimeout(r, 3000))]);
+    return assocDict ? (m, a) => Core.assocMatch(assocDict, m, a) : null;
+  }
+
   function startTest(lib, student, config, count, all) {
+    if (config.criteria === 'any' && config.display !== 'all' && config.match !== 'strict') loadAssoc();
     const questions = Core.buildQuestions(lib.words, { all, count, display: config.display });
     test = { lib: lib.name, student, config, questions, idx: 0, answers: [], startedAt: Date.now(), phase: 'ask' };
     $('#test-setup').hidden = true;
     $('#runner').hidden = false;
+    document.body.classList.add('testing');
     renderQuestion();
   }
 
@@ -230,13 +291,13 @@
     const hint = Core.generateHint(q.word, config.hint);
     $('#r-card').innerHTML = `
       <div class="prompt">${q.shown.map(s => `<div class="prompt-sense">${senseHtml(s)}</div>`).join('')}</div>
-      <div class="hint-letters ${hint ? '' : 'blank'}">${hint ? h(hint) : '凭释义写出单词'}</div>
-      <label class="field"><span>拼写</span>
+      <div class="hint-letters ${hint ? '' : 'blank'}">${hint ? h(hint) : '没有提示，凭释义写出单词'}</div>
+      <label class="field spell-field"><span class="sr-only">写出单词</span>
         <input type="text" class="spell-input" id="a-spell" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
-      ${needMeaning ? `<label class="field"><span>写出其余词性的释义 <span class="ask-hint">（还有 ${q.ask.map(s => s.pos ? h(s.pos) + '.' : '1 个').join('、')}；多个用逗号或分号隔开）</span></span>
+      ${needMeaning ? `<label class="field meaning-field"><span>写出其余释义 <span class="ask-hint">还有 ${q.ask.map(s => s.pos ? h(s.pos) + '.' : '1 个').join('、')}，多个用逗号隔开</span></span>
         <input type="text" id="a-mean" autocomplete="off"></label>` : ''}
       <div class="q-actions">
-        <span class="kbd-hint"><kbd>Enter</kbd> ${needMeaning ? '下一格 / 提交' : '提交'}</span>
+        <span class="kbd-hint"><kbd>Enter</kbd> ${needMeaning ? '填下一栏，再按一次提交' : '提交'}</span>
         <button type="button" class="btn primary" id="a-submit">提交</button>
       </div>`;
     const spell = $('#a-spell');
@@ -271,7 +332,8 @@
     // 服务在跑（或正在起来）才问模型；没装就纯文字匹配，不等待
     const useJev = jev.state === 'ready' || jev.state === 'starting';
     let slow = useJev ? setTimeout(() => { btn.innerHTML = '<span class="spinner"></span> 智能判分中…'; }, 250) : null;
-    const res = await Core.gradeAnswer(q, input, test.config, useJev ? (m, a) => jev.judge(m, a) : null);
+    const needsAssoc = q.ask.length && test.config.criteria === 'any' && test.config.match !== 'strict';
+    const res = await Core.gradeAnswer(q, input, test.config, useJev ? (m, a) => jev.judge(m, a) : null, needsAssoc ? await assocJudge() : null);
     clearTimeout(slow);
     if (!test) return;   // 判分期间被放弃
     test.answers.push({
@@ -288,13 +350,16 @@
     // 提交用的那次 Enter 还没松开，焦点就到了「下一题」按钮上，会被浏览器当成一次点击：留一点间隔
     test.feedbackAt = performance.now();
     const jevHit = res.senses.filter(s => s.via === 'jev');
+    const assocHit = res.senses.filter(s => s.via === 'assoc');
     const missedMeaning = res.senses.some(s => !s.ok);
     $('#r-card').innerHTML = `
-      <div class="verdict ${res.correct ? 'ok' : 'bad'}">${res.correct ? '✓ 正确' : '✗ 错误'}${timedOut ? '<span class="muted small">（超时自动提交）</span>' : ''}</div>
+      <div class="verdict ${res.correct ? 'ok' : 'bad'}">${res.correct
+        ? '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M7 21 L16 31 L34 8"/></svg>正确'
+        : '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M10 9 L30 31"/><path d="M30 9 L10 31"/></svg>错误'}${timedOut ? '<span class="muted">超时自动提交</span>' : ''}</div>
       <p class="answer-word">${h(q.word)}</p>
       <ul class="check-list">
-        <li class="${res.spellOk ? 'ok' : 'bad'}"><span class="mark">${res.spellOk ? '✓' : '✗'}</span><span>拼写${res.spellOk ? '' : `：你写的是 <b>${h(input.spelling.trim() || '（空）')}</b>`}</span></li>
-        ${q.shown.map(s => `<li class="info"><span class="mark"></span><span>${senseHtml(s)} <span class="muted small">（题面）</span></span></li>`).join('')}
+        <li class="${res.spellOk ? 'ok' : 'bad'}"><span class="mark">${res.spellOk ? '✓' : '✗'}</span><span>${res.spellOk ? '拼写正确' : `拼写：你写的是 <b>${h(input.spelling.trim() || '（空）')}</b>`}</span></li>
+        ${q.shown.map(s => `<li class="info"><span class="mark"></span><span>${senseHtml(s)}<span class="given">题目给出</span></span></li>`).join('')}
         ${q.ask.map((s, i) => {
           const r = res.senses[i];
           if (!r) return `<li class="info"><span class="mark"></span><span>${senseHtml(s)}</span></li>`;
@@ -303,12 +368,13 @@
       </ul>
       ${res.senses.length ? `<p class="your">你写的释义：<b>${h(input.meanings.trim() || '（空）')}</b></p>` : ''}
       ${jevHit.map(s => `<p class="jev-note">智能判分：「${h(s.piece)}」和「${h(s.sense.meanings)}」意思接近（${(s.p * 100).toFixed(0)}%），算对。</p>`).join('')}
+      ${assocHit.map(s => `<p class="jev-note">词义联想：「${h(s.piece)}」和「${h(s.sense.meanings)}」是近义的写法，算对。</p>`).join('')}
       <div class="q-actions">
         <span class="kbd-hint"><kbd>Enter</kbd> 下一题</span>
         <button type="button" class="btn primary" id="a-next">${test.idx + 1 >= test.questions.length ? '查看成绩' : '下一题'}</button>
       </div>
-      ${missedMeaning && res.spellOk && !jev.installed && !nudged ? '<p class="nudge">意思写对了却被判错？<button type="button" class="link" data-action="open-jev">开启智能判分</button>，能识别近义的写法。</p>' : ''}`;
-    if (missedMeaning && res.spellOk && !jev.installed) nudged = true;
+      ${missedMeaning && res.spellOk && !jev.installed && CAN_INSTALL && !nudged ? '<p class="nudge">意思写对了却被判错？<button type="button" class="link" data-action="open-jev">开启智能判分</button>，能识别近义的写法。</p>' : ''}`;
+    if (missedMeaning && res.spellOk && !jev.installed && CAN_INSTALL) nudged = true;
     const next = $('#a-next');
     next.addEventListener('click', nextQuestion);
     next.focus();
@@ -335,6 +401,7 @@
     test = null;
     $('#runner').hidden = true;
     $('#test-setup').hidden = false;
+    document.body.classList.remove('testing');
     if (!save || !t || !t.answers.length) return;
     const correct = t.answers.filter(a => a.correct).length;
     const record = {
@@ -366,13 +433,14 @@
     $('#rec-list').innerHTML = list.length ? list.map((r, i) => `
       <article class="record">
         <div class="record-top">
-          <div class="score">${h(r.accuracy)}<small>%</small></div>
+          <div class="score" title="正确率">${+Number(r.accuracy).toFixed(1)}<small>%</small></div>
+          <div class="record-who">${h(r.student)}</div>
+          <div class="record-when">${h(r.libName)}，${h(fmtDate(r.timestamp))}${r.planned && r.planned > r.total ? `，中途结束（做了 ${r.total}/${r.planned} 题）` : ''}</div>
           <div class="stats">
             <div class="stat"><b>${Number(r.correct)}</b><span>答对</span></div>
             <div class="stat"><b>${Number(r.total) - Number(r.correct)}</b><span>答错</span></div>
             <div class="stat"><b>${Core.formatDuration(r.duration)}</b><span>用时</span></div>
           </div>
-          <div class="record-meta"><b>${h(r.student)}</b>${h(r.libName)} · ${h(fmtDate(r.timestamp))}${r.planned && r.planned > r.total ? ` · 中途结束（${r.total}/${r.planned}）` : ''}</div>
         </div>
         ${r.wrongWords && r.wrongWords.length ? `
           <details ${i === 0 ? 'open' : ''}>
@@ -385,19 +453,19 @@
                 <td>${w.spellOk === false || (w.spellOk === undefined && w.spelling.toLowerCase() !== String(w.word).toLowerCase()) ? `<span class="bad">${h(w.spelling || '—')}</span>` : h(w.spelling || '—')}</td>
                 <td>${h(w.meanings || '—')}</td></tr>`).join('')}</tbody>
             </table></div>
-          </details>` : '<p class="all-right">全部正确！</p>'}
+          </details>` : '<p class="all-right">全部答对，没有错词。</p>'}
         <div class="record-foot">
-          ${r.wrongWords && r.wrongWords.length ? `<button type="button" class="btn small ghost" data-action="retest" data-id="${Number(r.id)}">重测错词</button>` : ''}
-          <button type="button" class="btn small ghost danger" data-action="delete-record" data-id="${Number(r.id)}">删除</button>
+          ${r.wrongWords && r.wrongWords.length ? `<button type="button" class="btn small quiet" data-action="retest" data-id="${Number(r.id)}">重测错词</button>` : ''}
+          <button type="button" class="btn small quiet danger" data-action="delete-record" data-id="${Number(r.id)}">删除记录</button>
         </div>
-      </article>`).join('') : '<div class="card empty">还没有测试记录。</div>';
+      </article>`).join('') : '<p class="empty-paper">还没有测试记录。做完一次测试，成绩和错词会出现在这里。</p>';
   }
   $('#rec-student').addEventListener('change', renderRecords);
 
   function retest(id) {
     const r = records.find(x => x.id === id);
     if (!r) return;
-    const name = `错词重测 · ${r.libName}`.slice(0, 60);
+    const name = `${r.libName}（错词）`.slice(0, 60);
     const words = r.wrongWords.map(w => ({ word: w.word, senses: w.senses })).filter(w => w.senses && w.senses.length);
     libraries[name] = { name, words, createdAt: new Date().toISOString(), count: words.length };
     saveLibraries();
@@ -420,6 +488,11 @@
       case 'export-csv': return exportCsv();
       case 'preview-lib': return showPreview(name);
       case 'close-preview': $('#lib-preview').hidden = true; return;
+      case 'new-lib':
+        $('#lib-import').hidden = false;
+        $('#lib-import').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return $('#lib-name').focus();
+      case 'cancel-import': $('#lib-import').hidden = true; return;
       case 'test-lib': prefs.lib = name; return showView('test');
       case 'delete-lib':
         if (!libraries[name] || !confirm(`删除词库「${name}」？测试记录会保留。`)) return;
@@ -464,6 +537,7 @@
   const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
   const OS = /Android|iPhone|iPad|iPod/i.test(ua) || (navigator.maxTouchPoints > 1 && /Mac/.test(platform)) ? 'mobile'
     : /Win/i.test(platform) ? 'windows' : /Mac/i.test(platform) ? 'macos' : /Linux|X11/i.test(platform) ? 'linux' : 'other';
+  const CAN_INSTALL = OS !== 'mobile' && OS !== 'other';   // iPad、手机装不了本地模型
   const ORIGIN = location.origin && location.origin.startsWith('http') ? location.origin : 'https://genuineedu.pages.dev';
   const UNIX_CMD = `curl -fsSL ${ORIGIN}/jev/unix/install.sh | JEV_ORIGIN=${ORIGIN} bash`;
   const WIN_CMD = `powershell -ep bypass -c "iwr -useb ${ORIGIN}/jev/windows/install.ps1 -OutFile $env:TEMP\\jev.ps1; & $env:TEMP\\jev.ps1 -Origin ${ORIGIN}"`;
@@ -538,7 +612,8 @@
     if (note) {
       note.textContent = jev.state === 'ready' ? '智能判分已开启：近义的释义也能判对。'
         : jev.installed ? '智能判分会在开始测试时自动启动。'
-        : '释义按文字匹配判分。可在右上角开启智能判分。';
+        : CAN_INSTALL ? '释义用词义联想判分，常见的近义写法也能算对。在电脑上装好智能判分会更准。'
+        : '释义用词义联想判分，常见的近义写法也能算对。';
     }
 
     const body = $('#jev-body');
@@ -583,7 +658,7 @@
             ${installSteps(true)}</details>`;
     }
     if (OS === 'mobile' || OS === 'other') {
-      return intro + banner('', '需要在电脑上使用', '智能判分要在 Windows / macOS / Linux 电脑上安装；在这台设备上会使用文字匹配，照常可以答题。');
+      return intro + banner('', '这台设备装不了智能判分', '智能判分要装在 Windows、macOS 或 Linux 电脑上。在这台设备上，释义用词义联想判分：常见的近义写法也能算对，只是不如智能判分准。');
     }
     return intro + installSteps(false)
       + (installClicked ? `<p class="small muted"><span class="spinner"></span> 等待安装完成，装好后这里会自动变成「已开启」。 <button type="button" class="link" data-action="jev-check">我已经装好了</button></p>` : '');

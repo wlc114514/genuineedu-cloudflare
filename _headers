@@ -7,6 +7,12 @@
   Cache-Control: no-cache
 /js/*
   Cache-Control: no-cache
+# 词义联想词表约 2.5MB（压缩后约 1MB）：缓存一天，同一天里重复测试不用再下载
+/data/*
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=86400
+/fonts/*
+  Cache-Control: public, max-age=2592000
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin

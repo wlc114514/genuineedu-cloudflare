@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "python -m http.server 8080",
     "build": "node tools/build.mjs",
-    "test": "node --test tests/core.test.js tests/jev-client.test.js && node tools/build.mjs --check",
+    "test": "node --test tests/core.test.js tests/jev-client.test.js && node tools/build.mjs --check && node tests/assoc-eval.mjs",
     "test:agent": "node tests/agent.test.mjs windows .testcache/win-inst",
     "test:install": "node tests/install-windows.test.mjs",
     "test:browser": "node tests/browser.test.mjs",
-    "dist": "node tools/build.mjs --dist"
+    "dist": "node tools/build.mjs --dist",
+    "build:assoc": "node tools/build-assoc.mjs"
   },
   "keywords": [
     "vocabulary",
