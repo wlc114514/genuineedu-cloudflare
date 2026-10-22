@@ -44,6 +44,21 @@ test('词性归一', () => {
   assert.equal(C.normalizePos('a'), null);   // 不把冠词 a 当成形容词
 });
 
+test('释义匹配：否定字不一致不算包含（不合理 ≠ 合理）', () => {
+  const ok = (m, a) => C.gradeMeanings([{ pos: 'adj', meanings: m }], a, 'loose')[0].ok;
+  assert.equal(ok('合理的', '不合理的'), false);
+  assert.equal(ok('不重要的', '重要'), false);
+  assert.equal(ok('可能的、或许', '不可能'), false);
+  assert.equal(ok('无用的', '无用'), true, '两边都有否定字照常');
+  assert.equal(ok('无用的、废物', '废物'), true, '别的释义有否定字不影响');
+  assert.equal(ok('重要的', '非常重要的'), true, '「非常」不是否定');
+  assert.equal(C.negKey('差不多'), '', '「差不多」不是否定');
+  const dict = C.parseAssoc('重要 important significant major\n不 not\n诚实 honest');
+  assert.equal(C.assocMatch(dict, '重要的', '不重要的').ok, false, '词义联想也查否定字');
+  assert.equal(C.assocMatch(dict, '诚实的', '不诚实的').ok, false);
+  assert.equal(C.assocMatch(dict, '重要的', '重要').ok, true);
+});
+
 test('释义匹配：宽松 / 严格 / 括号注释', () => {
   const senses = [{ pos: 'n', meanings: '票据；议案' }, { pos: 'n', meanings: '(东西的）清单、财产目录' }];
   let r = C.gradeMeanings(senses, '议案，清单', 'loose');

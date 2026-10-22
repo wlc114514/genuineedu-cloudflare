@@ -115,7 +115,16 @@
   }
   function hasContent(s) { return /[0-9A-Za-z一-鿿]/.test(String(s ?? '')); }
 
-  // 宽松：任一方包含另一方（≥2 个字才算数，避免「的」之类误中）
+  // 否定字：「不合理」包含「合理」，按包含判就会把反义当成对。两边否定字不一样时不按包含判，交给模型
+  const NEGATORS = '不非无未没反否莫勿';
+  // 含否定字但不表否定的常用词，先去掉再看（「几乎」=「差不多」、「重要的」≈「非常重要的」）
+  const NOT_NEGATION = /差不多|不错|不断|不久|不得不|非常|无论|未来|反而|反应|反映|莫非/g;
+  function negKey(s) {
+    const t = String(s).replace(NOT_NEGATION, '');
+    return [...NEGATORS].filter(c => t.includes(c)).join('');
+  }
+
+  // 宽松：任一方包含另一方（≥2 个字才算数，避免「的」之类误中；否定字要一致）
   // 严格：学生写的某一项与标准释义某一项完全一致
   function senseMatched(sense, answerParts, mode) {
     const expected = splitMeanings(sense.meanings);
@@ -123,6 +132,7 @@
     return answerParts.some(a => expected.some(e => {
       if (mode === 'strict') return a === e;
       if (a === e) return true;
+      if (negKey(a) !== negKey(e)) return false;
       const short = a.length <= e.length ? a : e;
       return short.length >= 2 && (e.includes(a) || a.includes(e));
     }));
@@ -298,6 +308,8 @@
   // 返回 {ok, shared}；dict 为空时返回 null（词表没加载，退回文字匹配）
   function assocMatch(dict, expected, answer, opts = ASSOC) {
     if (!dict || !dict.size) return null;
+    // 「不重要」会拆成「不」「重要」，关键词和「重要」一样：否定字不一致的直接不算
+    if (negKey(cleanMeaning(expected)) !== negKey(cleanMeaning(answer))) return { ok: false, shared: [] };
     const a = [...assocKeywords(dict, expected)], b = [...assocKeywords(dict, answer)];
     const shared = [];
     let best = 0;
@@ -391,7 +403,7 @@
 
   return {
     normalizePos, isPos, parseWordList,
-    cleanMeaning, splitMeanings, hasContent, gradeMeanings,
+    cleanMeaning, splitMeanings, hasContent, gradeMeanings, negKey,
     SENSE_MERGE_THRESHOLD, combinePos, mergeSenses,
     shuffle, clampInt, buildQuestions, generateHint, normalizeSpelling, spellingCorrect,
     JEV, jevPrompt, jevMargin, jevProbability, gradeAnswer,
